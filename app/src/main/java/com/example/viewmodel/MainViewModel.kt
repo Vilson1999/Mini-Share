@@ -32,7 +32,7 @@ import java.util.UUID
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    val wifiDirectManager = WifiDirectManager(application)
+    private val wifiDirectManager = WifiDirectManager(application)
     private val bluetoothDiscoveryHelper = BluetoothDiscoveryHelper(application)
     private val transferEngine = FileTransferEngine(application)
 
@@ -69,23 +69,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val peers = wifiDirectManager.peers
     val isDiscovering = wifiDirectManager.isDiscovering
-    val isWifiEnabled = wifiDirectManager.isWifiP2pEnabled
     val thisDevice = wifiDirectManager.thisDevice
-    val isConnected = wifiDirectManager.isConnected
 
-    private val prefs = application.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-    private val _userName = MutableStateFlow(
-        prefs.getString("user_name", null) ?: (android.os.Build.MODEL ?: "User")
-    )
+    private val _userName = MutableStateFlow(android.os.Build.MODEL ?: "User")
     val userName: StateFlow<String> = _userName.asStateFlow()
-
-    fun updateUserName(name: String) {
-        val trimmed = name.trim()
-        if (trimmed.isNotEmpty()) {
-            _userName.value = trimmed
-            prefs.edit().putString("user_name", trimmed).apply()
-        }
-    }
 
     init {
         viewModelScope.launch {
@@ -468,13 +455,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         wifiDirectManager.unregister()
     }
 
-    fun resetToHome() {
+    private fun stopActiveSession() {
         connectTimeoutJob?.cancel()
         stopDiscoveryLoop()
         cancelAllTransfers()
-        bluetoothDiscoveryHelper.stopAll()
         wifiDirectManager.stopDiscovery()
         wifiDirectManager.disconnect()
+    }
+
+    fun resetToHome() {
+        stopActiveSession()
         _connectingDeviceAddress.value = null
         _selectedFiles.value = emptyList()
         _transferFiles.value = emptyList()
@@ -486,8 +476,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        stopDiscoveryLoop()
-        cancelAllTransfers()
+        stopActiveSession()
         wifiDirectManager.unregister()
     }
 }

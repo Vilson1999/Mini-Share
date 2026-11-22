@@ -46,7 +46,7 @@ Exchange files directly between connected devices instead of uploading them to a
 - **Connectivity:** Android Wi-Fi Direct APIs and Bluetooth discovery helpers
 - **Minimum Android version:** Android 9 (API 28)
 - **Target Android version:** Android 13+ build target (API 36)
-- **Package:** `com.aistudio.wifi.share.p2pdrop`
+- **Package:** `com.minishare.vilson`
 - **App icon:** Android launcher icon from `mipmap-xxxhdpi/ic_launcher.png`
 
 ## Getting Started

@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.net.NetworkInfo
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
@@ -15,6 +14,7 @@ import android.net.wifi.p2p.WifiP2pManager
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest
 import android.os.Build
+import android.os.Parcelable
 import android.util.Log
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,9 +34,6 @@ class WifiDirectManager(private val context: Context) {
     private var channel: WifiP2pManager.Channel? = null
     private var receiver: BroadcastReceiver? = null
 
-    private val _isWifiP2pEnabled = MutableStateFlow(false)
-    val isWifiP2pEnabled: StateFlow<Boolean> = _isWifiP2pEnabled.asStateFlow()
-
     private val _peers = MutableStateFlow<List<WifiP2pDevice>>(emptyList())
     val peers: StateFlow<List<WifiP2pDevice>> = _peers.asStateFlow()
 
@@ -46,17 +43,12 @@ class WifiDirectManager(private val context: Context) {
     private val _connectionInfo = MutableStateFlow<WifiP2pInfo?>(null)
     val connectionInfo: StateFlow<WifiP2pInfo?> = _connectionInfo.asStateFlow()
 
-    private val _isConnected = MutableStateFlow(false)
-    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
-
     private val _isDiscovering = MutableStateFlow(false)
     val isDiscovering: StateFlow<Boolean> = _isDiscovering.asStateFlow()
 
     private val systemPeers = ConcurrentHashMap<String, WifiP2pDevice>()
     private val servicePeers = ConcurrentHashMap<String, WifiP2pDevice>()
     private val servicePeerNames = ConcurrentHashMap<String, String>()
-    private var localServiceInfo: WifiP2pDnsSdServiceInfo? = null
-    private var serviceRequest: WifiP2pDnsSdServiceRequest? = null
     @Volatile
     private var isActivelyListening = false
 
@@ -117,7 +109,6 @@ class WifiDirectManager(private val context: Context) {
     private fun registerReceiver() {
         if (receiver != null) return
         val intentFilter = IntentFilter().apply {
-            addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
             addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
             addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
             addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)
@@ -125,26 +116,16 @@ class WifiDirectManager(private val context: Context) {
         }
 
         receiver = object : BroadcastReceiver() {
-            @Suppress("DEPRECATION")
             @SuppressLint("MissingPermission")
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
-                    WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION -> {
-                        val state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1)
-                        _isWifiP2pEnabled.value = (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED)
-                    }
-
                     WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION -> {
                         val state = intent.getIntExtra(WifiP2pManager.EXTRA_DISCOVERY_STATE, -1)
                         _isDiscovering.value = (state == WifiP2pManager.WIFI_P2P_DISCOVERY_STARTED)
                     }
 
                     WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION -> {
-                        val extraPeers = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST, WifiP2pDeviceList::class.java)
-                        } else {
-                            intent.getParcelableExtra(WifiP2pManager.EXTRA_P2P_DEVICE_LIST)
-                        }
+                        val extraPeers = intent.parcelableExtra<WifiP2pDeviceList>(WifiP2pManager.EXTRA_P2P_DEVICE_LIST)
                         if (extraPeers != null) {
                             systemPeers.clear()
                             extraPeers.deviceList.forEach { dev ->
@@ -156,38 +137,20 @@ class WifiDirectManager(private val context: Context) {
                     }
 
                     WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
-                        val p2pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO, WifiP2pInfo::class.java)
-                        } else {
-                            intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
-                        }
-                        val networkInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO, NetworkInfo::class.java)
-                        } else {
-                            intent.getParcelableExtra(WifiP2pManager.EXTRA_NETWORK_INFO)
-                        }
-
+                        val p2pInfo = intent.parcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
                         if (p2pInfo?.groupFormed == true && p2pInfo.groupOwnerAddress != null) {
                             _connectionInfo.value = p2pInfo
-                            _isConnected.value = true
                             requestConnectionInfo()
-                        } else if (p2pInfo?.groupFormed == true || networkInfo?.isConnected == true) {
-                            _isConnected.value = true
+                        } else if (p2pInfo?.groupFormed == true) {
                             requestConnectionInfo()
                         } else {
-                            _isConnected.value = false
                             _connectionInfo.value = null
                         }
                     }
 
                     WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION -> {
-                        val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE, WifiP2pDevice::class.java)
-                        } else {
-                            intent.getParcelableExtra(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE)
-                        }
-                        if (device != null) {
-                            _thisDevice.value = device
+                        intent.parcelableExtra<WifiP2pDevice>(WifiP2pManager.EXTRA_WIFI_P2P_DEVICE)?.let {
+                            _thisDevice.value = it
                         }
                     }
                 }
@@ -201,6 +164,15 @@ class WifiDirectManager(private val context: Context) {
             intentFilter,
             ContextCompat.RECEIVER_EXPORTED
         )
+    }
+
+    @Suppress("DEPRECATION")
+    private inline fun <reified T : Parcelable> Intent.parcelableExtra(key: String): T? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getParcelableExtra(key, T::class.java)
+        } else {
+            getParcelableExtra(key)
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -222,34 +194,22 @@ class WifiDirectManager(private val context: Context) {
             return
         }
         val safeName = userName.trim().ifEmpty { "Receiver" }
-        val record = mapOf("name" to safeName)
-        val info = WifiP2pDnsSdServiceInfo.newInstance(SERVICE_INSTANCE, SERVICE_TYPE, record)
-        localServiceInfo = info
+        val info = WifiP2pDnsSdServiceInfo.newInstance(SERVICE_INSTANCE, SERVICE_TYPE, mapOf("name" to safeName))
+        val addService = {
+            manager?.addLocalService(ch, info, object : WifiP2pManager.ActionListener {
+                override fun onSuccess() {
+                    onDone?.invoke()
+                }
+
+                override fun onFailure(reason: Int) {
+                    onDone?.invoke()
+                }
+            }) ?: Unit
+        }
 
         manager?.clearLocalServices(ch, object : WifiP2pManager.ActionListener {
-            override fun onSuccess() {
-                manager.addLocalService(ch, info, object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        onDone?.invoke()
-                    }
-
-                    override fun onFailure(reason: Int) {
-                        onDone?.invoke()
-                    }
-                })
-            }
-
-            override fun onFailure(reason: Int) {
-                manager.addLocalService(ch, info, object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        onDone?.invoke()
-                    }
-
-                    override fun onFailure(reason: Int) {
-                        onDone?.invoke()
-                    }
-                })
-            }
+            override fun onSuccess() = addService()
+            override fun onFailure(reason: Int) = addService()
         })
     }
 
@@ -335,27 +295,18 @@ class WifiDirectManager(private val context: Context) {
         manager?.setDnsSdResponseListeners(ch, servListener, txtListener)
 
         val request = WifiP2pDnsSdServiceRequest.newInstance()
-        serviceRequest = request
+        val addRequest = {
+            manager?.addServiceRequest(ch, request, object : WifiP2pManager.ActionListener {
+                override fun onSuccess() {
+                    manager.discoverServices(ch, null)
+                }
+
+                override fun onFailure(reason: Int) {}
+            }) ?: Unit
+        }
         manager?.clearServiceRequests(ch, object : WifiP2pManager.ActionListener {
-            override fun onSuccess() {
-                manager.addServiceRequest(ch, request, object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        manager.discoverServices(ch, null)
-                    }
-
-                    override fun onFailure(reason: Int) {}
-                })
-            }
-
-            override fun onFailure(reason: Int) {
-                manager.addServiceRequest(ch, request, object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        manager.discoverServices(ch, null)
-                    }
-
-                    override fun onFailure(reason: Int) {}
-                })
-            }
+            override fun onSuccess() = addRequest()
+            override fun onFailure(reason: Int) = addRequest()
         })
     }
 
@@ -435,7 +386,6 @@ class WifiDirectManager(private val context: Context) {
         manager?.requestConnectionInfo(ch) { info: WifiP2pInfo? ->
             if (info != null && info.groupFormed) {
                 _connectionInfo.value = info
-                _isConnected.value = true
                 onReady?.invoke(info)
             }
         }
@@ -443,7 +393,7 @@ class WifiDirectManager(private val context: Context) {
 
     fun resetConnectionState() {
         isActivelyListening = false
-        _isConnected.value = false
+        _isDiscovering.value = false
         _connectionInfo.value = null
         systemPeers.clear()
         servicePeers.clear()
@@ -479,9 +429,7 @@ class WifiDirectManager(private val context: Context) {
     }
 
     fun disconnect() {
-        isActivelyListening = false
-        _isConnected.value = false
-        _connectionInfo.value = null
+        resetConnectionState()
         val ch = channel ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             manager?.stopListening(ch, null)
@@ -491,12 +439,10 @@ class WifiDirectManager(private val context: Context) {
         manager?.cancelConnect(ch, null)
         manager?.removeGroup(ch, object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
-                _isConnected.value = false
                 _connectionInfo.value = null
             }
 
             override fun onFailure(reason: Int) {
-                _isConnected.value = false
                 _connectionInfo.value = null
             }
         })
@@ -508,5 +454,10 @@ class WifiDirectManager(private val context: Context) {
         } catch (_: Exception) {
         }
         receiver = null
+        try {
+            channel?.close()
+        } catch (_: Exception) {
+        }
+        channel = null
     }
 }

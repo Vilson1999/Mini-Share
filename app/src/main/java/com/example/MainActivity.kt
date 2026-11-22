@@ -14,6 +14,7 @@ import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -74,7 +75,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         if (savedInstanceState == null) {
             handleShareIntent(intent)
@@ -479,7 +480,6 @@ fun MainAppContent(
                 AppScreen.HOME -> {
                     HomeScreen(
                         userName = userName,
-                        onUserNameChange = { viewModel.updateUserName(it) },
                         onSendClick = {
                             requestActionWithPermissionsAndSettings {
                                 awaitingExternalModal = true
@@ -531,7 +531,6 @@ fun MainAppContent(
                         files = transferFiles,
                         stats = transferStats,
                         direction = transferDirection,
-                        isActive = isTransferActive,
                         isComplete = isTransferComplete,
                         onCancelFile = { fileId -> viewModel.cancelTransferringFile(fileId) },
                         onCancelAll = { viewModel.resetToHome() },

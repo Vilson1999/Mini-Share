@@ -49,11 +49,8 @@ fun RadarScreen(
     onDeviceClick: (WifiP2pDevice) -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val totalSizeBytes = remember(selectedFiles) {
-        selectedFiles.sumOf { it.sizeBytes }
-    }
-    val totalFormattedSize = remember(totalSizeBytes) {
-        formatBytes(totalSizeBytes)
+    val totalFormattedSize = remember(selectedFiles) {
+        formatBytes(selectedFiles.sumOf { it.sizeBytes })
     }
     val fileLabel = if (selectedFiles.size == 1) "FILE" else "FILES"
 
@@ -220,7 +217,6 @@ private fun DeviceItemCard(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
                 .background(if (isConnecting) colors.outline else colors.primary)
-                .clickable(enabled = !isConnecting) { onConnectClick() }
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Text(

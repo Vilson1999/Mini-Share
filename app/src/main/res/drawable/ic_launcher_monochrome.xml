@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="1.08"
+        android:scaleY="1.08"
+        android:translateY="-1.5">
+
+    <!-- Left Phone Silhouette -->
+    <group
+        android:pivotX="40.5"
+        android:pivotY="44.5"
+        android:rotation="-10">
+        <path
+            android:fillColor="#000000"
+            android:fillType="evenOdd"
+            android:pathData="M35.4,32.9 L45.6,32.9 A2.5,2.5 0 0,1 48.1,35.4 L48.1,53.6 A2.5,2.5 0 0,1 45.6,56.1 L35.4,56.1 A2.5,2.5 0 0,1 32.9,53.6 L32.9,35.4 A2.5,2.5 0 0,1 35.4,32.9 Z M35.6,36.2 L45.4,36.2 A1.1,1.1 0 0,1 46.5,37.3 L46.5,50.7 A1.1,1.1 0 0,1 45.4,51.8 L35.6,51.8 A1.1,1.1 0 0,1 34.5,50.7 L34.5,37.3 A1.1,1.1 0 0,1 35.6,36.2 Z" />
+    </group>
+
+    <!-- Right Phone Silhouette -->
+    <group
+        android:pivotX="67.5"
+        android:pivotY="44.5"
+        android:rotation="10">
+        <path
+            android:fillColor="#000000"
+            android:fillType="evenOdd"
+            android:pathData="M62.4,32.9 L72.6,32.9 A2.5,2.5 0 0,1 75.1,35.4 L75.1,53.6 A2.5,2.5 0 0,1 72.6,56.1 L62.4,56.1 A2.5,2.5 0 0,1 59.9,53.6 L59.9,35.4 A2.5,2.5 0 0,1 62.4,32.9 Z M62.6,36.2 L72.4,36.2 A1.1,1.1 0 0,1 73.5,37.3 L73.5,50.7 A1.1,1.1 0 0,1 72.4,51.8 L62.6,51.8 A1.1,1.1 0 0,1 61.5,50.7 L61.5,37.3 A1.1,1.1 0 0,1 62.6,36.2 Z" />
+    </group>
+
+    <!-- Bottom Double-Headed Smile Arrow -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M27.5,60.5 L35.5,63.5 L33.5,65.0 C42.0,74.5 66.0,74.5 74.5,65.0 L72.5,63.5 L80.5,60.5 L78.5,69.2 L76.8,67.8 C67.0,80.5 41.0,80.5 31.2,67.8 L29.5,69.2 Z" />
+    </group>
+</vector>

@@ -46,7 +46,6 @@ import com.example.model.TransferStats
 import com.example.model.TransferStatus
 import com.example.ui.components.AppIcons
 import com.example.ui.components.AppTopBar
-import com.example.ui.components.KeepScreenOnEffect
 import com.example.ui.components.getFileIcon
 
 @Composable
@@ -54,15 +53,11 @@ fun TransferScreen(
     files: List<FileItem>,
     stats: TransferStats,
     direction: TransferDirection,
-    isActive: Boolean,
     isComplete: Boolean,
     onCancelFile: (String) -> Unit,
     onCancelAll: () -> Unit,
     onDone: () -> Unit
 ) {
-    // Keep screen on during file transfer as requested
-    KeepScreenOnEffect()
-
     val colors = MaterialTheme.colorScheme
     val primaryAccent = if (direction == TransferDirection.SEND) colors.primary else colors.secondary
     val animatedProgress by animateFloatAsState(
@@ -304,6 +299,11 @@ private fun TransferFileItem(
 ) {
     val colors = MaterialTheme.colorScheme
     val fileIcon = getFileIcon(file.mimeType, file.name)
+    val statusColor = when (file.status) {
+        TransferStatus.COMPLETED -> colors.tertiary
+        TransferStatus.CANCELLED, TransferStatus.FAILED -> colors.error
+        else -> primaryColor
+    }
 
     Row(
         modifier = Modifier
@@ -321,24 +321,8 @@ private fun TransferFileItem(
             modifier = Modifier
                 .size(42.dp)
                 .clip(CircleShape)
-                .background(
-                    when (file.status) {
-                        TransferStatus.COMPLETED -> colors.tertiary.copy(alpha = 0.15f)
-                        TransferStatus.CANCELLED -> colors.error.copy(alpha = 0.15f)
-                        TransferStatus.FAILED -> colors.error.copy(alpha = 0.15f)
-                        else -> primaryColor.copy(alpha = 0.15f)
-                    }
-                )
-                .border(
-                    1.dp,
-                    when (file.status) {
-                        TransferStatus.COMPLETED -> colors.tertiary.copy(alpha = 0.4f)
-                        TransferStatus.CANCELLED -> colors.error.copy(alpha = 0.4f)
-                        TransferStatus.FAILED -> colors.error.copy(alpha = 0.4f)
-                        else -> primaryColor.copy(alpha = 0.4f)
-                    },
-                    CircleShape
-                ),
+                .background(statusColor.copy(alpha = 0.15f))
+                .border(1.dp, statusColor.copy(alpha = 0.4f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -348,12 +332,7 @@ private fun TransferFileItem(
                     else -> fileIcon
                 },
                 contentDescription = null,
-                tint = when (file.status) {
-                    TransferStatus.COMPLETED -> colors.tertiary
-                    TransferStatus.CANCELLED -> colors.error
-                    TransferStatus.FAILED -> colors.error
-                    else -> primaryColor
-                },
+                tint = statusColor,
                 modifier = Modifier.size(20.dp)
             )
         }

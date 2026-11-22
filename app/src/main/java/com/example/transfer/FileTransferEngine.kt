@@ -38,7 +38,7 @@ import kotlin.coroutines.coroutineContext
 class FileTransferEngine(private val context: Context) {
 
     companion object {
-        const val PORT = 8888
+        private const val PORT = 8888
         private const val CHUNK_SIZE = 64 * 1024 // 64 KB
         private const val MAGIC_HEADER = 0x50325046 // 'P2PF'
         private const val CODE_DATA = 1
@@ -58,12 +58,12 @@ class FileTransferEngine(private val context: Context) {
         cancelledFileIds.add(fileId)
     }
 
-    fun isFileCancelled(fileId: String): Boolean {
-        return cancelledFileIds.contains(fileId)
-    }
-
     fun stopTransfer() {
         isRunning.set(false)
+        closeSockets()
+    }
+
+    private fun closeSockets() {
         try {
             clientSocket?.close()
         } catch (_: Exception) {}
@@ -304,14 +304,7 @@ class FileTransferEngine(private val context: Context) {
             }
         } finally {
             isRunning.set(false)
-            try {
-                clientSocket?.close()
-            } catch (_: Exception) {}
-            try {
-                serverSocket?.close()
-            } catch (_: Exception) {}
-            clientSocket = null
-            serverSocket = null
+            closeSockets()
         }
     }
 
@@ -452,14 +445,7 @@ class FileTransferEngine(private val context: Context) {
             }
         } finally {
             isRunning.set(false)
-            try {
-                clientSocket?.close()
-            } catch (_: Exception) {}
-            try {
-                serverSocket?.close()
-            } catch (_: Exception) {}
-            clientSocket = null
-            serverSocket = null
+            closeSockets()
         }
     }
 

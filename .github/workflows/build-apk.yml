@@ -132,24 +132,45 @@ jobs:
           name: MiniShare-armv8-apk
           path: release-apks/MiniShare-armv8-arm64-v8a.apk
 
-      - name: Publish GitHub Release with Direct Download Links
+      - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ steps.apks.outputs.release_tag }}"
-          REPO="${{ github.repository }}"
           ARMV7_FILE="release-apks/MiniShare-armv7-armeabi-v7a.apk"
           ARMV8_FILE="release-apks/MiniShare-armv8-arm64-v8a.apk"
 
-          NOTES=$(cat <<EOF
-          ### Direct APK Downloads
-          - **ARMv7 (\`armeabi-v7a\`)** (${{ steps.apks.outputs.armv7_size }}): https://github.com/${REPO}/releases/download/${TAG}/MiniShare-armv7-armeabi-v7a.apk
-          - **ARMv8 (\`arm64-v8a\`)** (${{ steps.apks.outputs.armv8_size }}): https://github.com/${REPO}/releases/download/${TAG}/MiniShare-armv8-arm64-v8a.apk
-          EOF
-          )
+          NOTES=$(printf '%s\n' \
+            "## Mini Share ${TAG}" \
+            "" \
+            "Ultra-light, offline peer-to-peer file sharing over Wi-Fi Direct and Bluetooth discovery." \
+            "" \
+            "### App Details" \
+            "- **Developer:** Vilson Sonkar" \
+            "- **Package:** \`com.minishare.vilson\`" \
+            "- **Android Support:** Android 9+ (minSdk 28) • Target SDK 36" \
+            "- **ARMv7 (\`armeabi-v7a\`) APK Size:** ${{ steps.apks.outputs.armv7_size }}" \
+            "- **ARMv8 (\`arm64-v8a\`) APK Size:** ${{ steps.apks.outputs.armv8_size }}" \
+            "" \
+            "### New Features" \
+            "- Offline Wi-Fi Direct peer-to-peer file sharing with Bluetooth discovery helpers and DNS-SD service naming" \
+            "- Redesigned Home screen with large circular **Send** and **Receive** buttons with labels inside the icon orbs" \
+            "- Top-center device name pills on Home and Receive screens, plus a top-center file count and size pill on Searching" \
+            "- Live Transfer screen with per-file progress, speed, remaining time, cancellation, and Android Share menu support" \
+            "" \
+            "### Fixes" \
+            "- Fixed debug build JDWP agent startup error by enabling \`isDebuggable\` on the debug build type" \
+            "- Added \`.env.example\` for Secrets Gradle Plugin configuration" \
+            "- Removed the right-side refresh button on Searching and continuous animations on Home action buttons" \
+            "" \
+            "### Improved" \
+            "- Maximum APK compression and shrinking using R8 integrated resource shrinking, Compose trace stripping, and compressed DEX/JNI packaging" \
+            "- Separate split release APKs for ARMv7 (\`armeabi-v7a\`) and ARMv8 (\`arm64-v8a\`)" \
+            "- Responsive portrait and landscape layouts using Jetpack Compose and Material 3, saving received files to **Downloads/Mini Share**")
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$ARMV7_FILE" "$ARMV8_FILE" --clobber
+            gh release edit "$TAG" --notes "$NOTES"
           else
             gh release create "$TAG" "$ARMV7_FILE" "$ARMV8_FILE" \
               --title "Mini Share $TAG" \
@@ -157,19 +178,34 @@ jobs:
               --notes "$NOTES"
           fi
 
-      - name: Write Direct Download Links to Job Summary
+      - name: Write Build Summary to Job Summary
         run: |
           TAG="${{ steps.apks.outputs.release_tag }}"
-          REPO="${{ github.repository }}"
           {
-            echo "## Mini Share APK Build Summary"
+            echo "## Mini Share ${TAG} Build Summary"
             echo ""
-            echo "| Architecture | File Size | Direct Download Link |"
+            echo "| Architecture | APK Artifact | File Size |"
             echo "|---|---|---|"
-            echo "| ARMv7 (\`armeabi-v7a\`) | ${{ steps.apks.outputs.armv7_size }} | [Download ARMv7 APK](https://github.com/${REPO}/releases/download/${TAG}/MiniShare-armv7-armeabi-v7a.apk) |"
-            echo "| ARMv8 (\`arm64-v8a\`) | ${{ steps.apks.outputs.armv8_size }} | [Download ARMv8 APK](https://github.com/${REPO}/releases/download/${TAG}/MiniShare-armv8-arm64-v8a.apk) |"
+            echo "| ARMv7 (\`armeabi-v7a\`) | \`MiniShare-armv7-armeabi-v7a.apk\` | ${{ steps.apks.outputs.armv7_size }} |"
+            echo "| ARMv8 (\`arm64-v8a\`) | \`MiniShare-armv8-arm64-v8a.apk\` | ${{ steps.apks.outputs.armv8_size }} |"
             echo ""
-            echo "### Always-Latest Direct Links"
-            echo "- ARMv7: \`https://github.com/${REPO}/releases/latest/download/MiniShare-armv7-armeabi-v7a.apk\`"
-            echo "- ARMv8: \`https://github.com/${REPO}/releases/latest/download/MiniShare-armv8-arm64-v8a.apk\`"
+            echo "### App Details"
+            echo "- **Developer:** Vilson Sonkar"
+            echo "- **Package:** \`com.minishare.vilson\`"
+            echo "- **Android Support:** Android 9+ (minSdk 28) • Target SDK 36"
+            echo ""
+            echo "### New Features"
+            echo "- Offline Wi-Fi Direct peer-to-peer file sharing with Bluetooth discovery helpers"
+            echo "- Large circular **Send** and **Receive** buttons with labels inside the icon orbs"
+            echo "- Top-center device name pills (Home & Receive) and top-center file count/size pill (Searching)"
+            echo "- Live Transfer progress, speed, remaining time, cancellation, and Android Share menu support"
+            echo ""
+            echo "### Fixes"
+            echo "- Enabled \`isDebuggable\` on debug builds to resolve JDWP startup errors"
+            echo "- Added \`.env.example\` for Secrets Gradle Plugin compatibility"
+            echo "- Removed Searching refresh button and Home button continuous animations"
+            echo ""
+            echo "### Improved"
+            echo "- Smaller compressed ARMv7 & ARMv8 split APKs via R8 integrated resource shrinking and Compose trace stripping"
+            echo "- Responsive Jetpack Compose & Material 3 layouts with **Downloads/Mini Share** Scoped Storage output"
           } >> "$GITHUB_STEP_SUMMARY"

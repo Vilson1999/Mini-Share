@@ -11,7 +11,7 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.wifishare.p2pdrop"
+    applicationId = "com.minishare.vilson"
     minSdk = 28
     targetSdk = 36
     versionCode = 1
@@ -99,6 +99,8 @@ android {
         "META-INF/NOTICE*",
         "META-INF/*.kotlin_module",
         "META-INF/*.version",
+        "META-INF/maven/**",
+        "META-INF/proguard/*",
         "**/*.kotlin_builtins",
         "**/*.kotlin_metadata",
         "kotlin-tooling-metadata.json",
@@ -127,7 +129,7 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.core.ktx)
   implementation(libs.androidx.lifecycle.runtime.compose)
-  implementation(libs.androidx.lifecycle.viewmodel.compose)
+  // implementation(libs.androidx.lifecycle.viewmodel.compose)
   implementation(libs.kotlinx.coroutines.android)
 
   testImplementation(libs.androidx.compose.ui.test.junit4)
