@@ -39,7 +39,13 @@ fun ReceiveScreen(
     onBackClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val displayDeviceName = userName.ifBlank { thisDevice?.deviceName ?: "Receiver" }
+    val displayDeviceName = userName
+        .trim()
+        .takeIf { it.isNotEmpty() && !it.equals("unknown", ignoreCase = true) }
+        ?: thisDevice?.deviceName
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() && !it.equals("unknown", ignoreCase = true) }
+        ?: "Receiver"
 
     Column(
         modifier = Modifier

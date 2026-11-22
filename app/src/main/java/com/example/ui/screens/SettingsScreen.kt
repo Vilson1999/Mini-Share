@@ -19,19 +19,30 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,9 +53,13 @@ import com.example.ui.components.AppTopBar
 
 @Composable
 fun SettingsScreen(
+    userName: String,
+    hasCustomUserName: Boolean,
     storageDisplayName: String,
     hasCustomStorage: Boolean,
     selectedTheme: AppThemeMode,
+    onSaveUserName: (String) -> Unit,
+    onResetUserNameClick: () -> Unit,
     onSelectStorageClick: () -> Unit,
     onResetStorageClick: () -> Unit,
     onThemeSelected: (AppThemeMode) -> Unit,
@@ -52,6 +67,11 @@ fun SettingsScreen(
 ) {
     val colors = MaterialTheme.colorScheme
     val settingsLabel = stringResource(R.string.settings)
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var draftName by remember(userName) { mutableStateOf(userName) }
+    val trimmedDraft = draftName.trim()
+    val isValidName = trimmedDraft.isNotEmpty() && !trimmedDraft.equals("unknown", ignoreCase = true)
 
     Column(
         modifier = Modifier
@@ -74,7 +94,122 @@ fun SettingsScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Select Storage
+            // 1. Edit User Name
+            SettingsSectionCard(
+                icon = AppIcons.Person,
+                title = stringResource(R.string.user_name_title),
+                subtitle = stringResource(R.string.user_name_subtitle)
+            ) {
+                OutlinedTextField(
+                    value = draftName,
+                    onValueChange = { updated ->
+                        if (updated.length <= 32) {
+                            draftName = updated
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("user_name_input"),
+                    singleLine = true,
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.user_name_placeholder),
+                            color = colors.onSurfaceVariant,
+                            fontSize = 14.sp
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = colors.background,
+                        unfocusedContainerColor = colors.background,
+                        focusedBorderColor = colors.primary,
+                        unfocusedBorderColor = colors.outline,
+                        focusedTextColor = colors.onSurface,
+                        unfocusedTextColor = colors.onSurface,
+                        cursorColor = colors.primary
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (isValidName) {
+                                onSaveUserName(trimmedDraft)
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                            }
+                        }
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val saveLabel = stringResource(R.string.save)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp)
+                            .clip(CircleShape)
+                            .background(if (isValidName) colors.primary else colors.outline)
+                            .clickable(
+                                enabled = isValidName,
+                                role = Role.Button,
+                                onClickLabel = saveLabel,
+                                onClick = {
+                                    onSaveUserName(trimmedDraft)
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
+                                }
+                            )
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .testTag("save_user_name_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = saveLabel,
+                            color = if (isValidName) colors.onPrimary else colors.onSurfaceVariant,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
+                    }
+
+                    if (hasCustomUserName) {
+                        val defaultLabel = stringResource(R.string.reset_default)
+                        Box(
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .clip(CircleShape)
+                                .background(colors.background)
+                                .border(1.dp, colors.outline, CircleShape)
+                                .clickable(
+                                    role = Role.Button,
+                                    onClickLabel = defaultLabel,
+                                    onClick = {
+                                        onResetUserNameClick()
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                    }
+                                )
+                                .padding(horizontal = 18.dp, vertical = 12.dp)
+                                .testTag("reset_user_name_button"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = defaultLabel,
+                                color = colors.onSurface,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 2. Select Storage
             SettingsSectionCard(
                 icon = AppIcons.Folder,
                 title = stringResource(R.string.select_storage),

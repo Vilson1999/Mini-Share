@@ -195,7 +195,10 @@ private fun DeviceItemCard(
 
             Column {
                 Text(
-                    text = if (device.deviceName.isNullOrBlank()) "Android Device" else device.deviceName,
+                    text = device.deviceName
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() && !it.equals("unknown", ignoreCase = true) }
+                        ?: "Android Device",
                     color = colors.onSurface,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,

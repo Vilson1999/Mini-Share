@@ -9,6 +9,7 @@ import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import android.provider.Settings
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -74,7 +75,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isDiscovering = wifiDirectManager.isDiscovering
     val thisDevice = wifiDirectManager.thisDevice
 
-    private val _userName = MutableStateFlow(android.os.Build.MODEL ?: "User")
+    private val _hasCustomUserName = MutableStateFlow(isValidDisplayName(prefs.getString(PREF_USER_NAME, null)))
+    val hasCustomUserName: StateFlow<Boolean> = _hasCustomUserName.asStateFlow()
+
+    private val _userName = MutableStateFlow(loadUserName(application))
     val userName: StateFlow<String> = _userName.asStateFlow()
 
     private val _themeMode = MutableStateFlow(loadThemeMode())
@@ -85,6 +89,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _storageDisplayName = MutableStateFlow(formatTreeUriDisplayName(_storageTreeUri.value))
     val storageDisplayName: StateFlow<String> = _storageDisplayName.asStateFlow()
+
+    private fun isValidDisplayName(name: String?): Boolean {
+        val trimmed = name?.trim() ?: return false
+        return trimmed.isNotEmpty() && !trimmed.equals("unknown", ignoreCase = true)
+    }
+
+    private fun resolveDefaultDeviceName(context: Context): String {
+        val systemDeviceName = try {
+            Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)
+        } catch (_: Exception) {
+            null
+        }
+        val candidates = listOf(
+            systemDeviceName,
+            wifiDirectManager.thisDevice.value?.deviceName,
+            android.os.Build.MODEL
+        )
+        return candidates.firstOrNull { isValidDisplayName(it) }?.trim()?.take(MAX_USER_NAME_LENGTH)
+            ?: DEFAULT_USER_NAME
+    }
+
+    private fun loadUserName(context: Context): String {
+        val saved = prefs.getString(PREF_USER_NAME, null)
+        return if (isValidDisplayName(saved)) {
+            saved!!.trim().take(MAX_USER_NAME_LENGTH)
+        } else {
+            resolveDefaultDeviceName(context)
+        }
+    }
+
+    fun updateUserName(newName: String): Boolean {
+        val sanitized = newName.trim().take(MAX_USER_NAME_LENGTH)
+        if (!isValidDisplayName(sanitized)) return false
+        _userName.value = sanitized
+        _hasCustomUserName.value = true
+        prefs.edit().putString(PREF_USER_NAME, sanitized).apply()
+        return true
+    }
+
+    fun resetUserNameToDefault() {
+        prefs.edit().remove(PREF_USER_NAME).apply()
+        _hasCustomUserName.value = false
+        _userName.value = resolveDefaultDeviceName(getApplication())
+    }
 
     private fun loadThemeMode(): AppThemeMode {
         val saved = prefs.getString("theme_mode", AppThemeMode.DEFAULT.name)
@@ -123,6 +171,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
+            wifiDirectManager.thisDevice.collect { device ->
+                val p2pName = device?.deviceName
+                if (!_hasCustomUserName.value &&
+                    _userName.value == DEFAULT_USER_NAME &&
+                    isValidDisplayName(p2pName)
+                ) {
+                    _userName.value = p2pName!!.trim().take(MAX_USER_NAME_LENGTH)
+                }
+            }
+        }
+        viewModelScope.launch {
             wifiDirectManager.connectionInfo.collect { info ->
                 if (info != null && info.groupFormed) {
                     val host = info.groupOwnerAddress?.hostAddress ?: "192.168.49.1"
@@ -152,6 +211,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    companion object {
+        private const val PREF_USER_NAME = "user_name"
+        private const val DEFAULT_USER_NAME = "Mini Share User"
+        private const val MAX_USER_NAME_LENGTH = 32
     }
 
     fun onFilesPicked(context: Context, uris: List<Uri>) {

@@ -320,6 +320,7 @@ fun MainAppContent(
     val transferError by viewModel.transferError.collectAsStateWithLifecycle()
     val thisDevice by viewModel.thisDevice.collectAsStateWithLifecycle()
     val userName by viewModel.userName.collectAsStateWithLifecycle()
+    val hasCustomUserName by viewModel.hasCustomUserName.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val storageTreeUri by viewModel.storageTreeUri.collectAsStateWithLifecycle()
     val storageDisplayName by viewModel.storageDisplayName.collectAsStateWithLifecycle()
@@ -637,9 +638,21 @@ fun MainAppContent(
                         viewModel.resetToHome()
                     }
                     SettingsScreen(
+                        userName = userName,
+                        hasCustomUserName = hasCustomUserName,
                         storageDisplayName = storageDisplayName,
                         hasCustomStorage = storageTreeUri != null,
                         selectedTheme = themeMode,
+                        onSaveUserName = { name ->
+                            if (viewModel.updateUserName(name)) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("User name updated")
+                                }
+                            }
+                        },
+                        onResetUserNameClick = {
+                            viewModel.resetUserNameToDefault()
+                        },
                         onSelectStorageClick = {
                             awaitingExternalModal = true
                             storagePickerLauncher.launch(null)
