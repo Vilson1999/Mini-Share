@@ -6,6 +6,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.util.Log
 import com.example.model.FileItem
@@ -311,6 +312,7 @@ class FileTransferEngine(private val context: Context) {
     suspend fun receiveFiles(
         isGroupOwner: Boolean,
         hostAddress: String,
+        storageTreeUri: String? = null,
         onProgress: (List<FileItem>, TransferStats) -> Unit,
         onComplete: (Boolean, String?) -> Unit
     ) = withContext(Dispatchers.IO) {
@@ -369,7 +371,7 @@ class FileTransferEngine(private val context: Context) {
                 mutableFiles[i] = file.copy(status = TransferStatus.TRANSFERRING)
                 onProgress(mutableFiles.toList(), calculateStats(totalBytes, totalTransferred, currentSpeed))
 
-                val destination = createDestination(file.name, file.mimeType)
+                val destination = createDestination(file.name, file.mimeType, storageTreeUri)
                 var fileTransferred = 0L
                 var isCancelled = false
 
@@ -452,6 +454,7 @@ class FileTransferEngine(private val context: Context) {
     private data class ReceiveDestination(
         val outputStream: OutputStream,
         val mediaUri: Uri? = null,
+        val safUri: Uri? = null,
         val file: File? = null
     )
 
@@ -476,9 +479,37 @@ class FileTransferEngine(private val context: Context) {
         }
     }
 
-    private fun createDestination(fileName: String, mimeType: String): ReceiveDestination {
+    private fun createDestination(
+        fileName: String,
+        mimeType: String,
+        storageTreeUri: String? = null
+    ): ReceiveDestination {
         val safeName = sanitizeFileName(fileName)
         val safeMime = resolveSafeMimeType(safeName, mimeType)
+
+        if (!storageTreeUri.isNullOrBlank()) {
+            try {
+                val resolver = context.contentResolver
+                val treeUri = Uri.parse(storageTreeUri)
+                val parentDocUri = DocumentsContract.buildDocumentUriUsingTree(
+                    treeUri,
+                    DocumentsContract.getTreeDocumentId(treeUri)
+                )
+                val docUri = DocumentsContract.createDocument(resolver, parentDocUri, safeMime, safeName)
+                if (docUri != null) {
+                    val stream = resolver.openOutputStream(docUri)
+                    if (stream != null) {
+                        return ReceiveDestination(outputStream = stream, safUri = docUri)
+                    }
+                    try {
+                        DocumentsContract.deleteDocument(resolver, docUri)
+                    } catch (_: Exception) {}
+                }
+            } catch (e: Exception) {
+                Log.e("FileTransferEngine", "Custom SAF folder write failed, using default", e)
+            }
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
                 val resolver: ContentResolver = context.contentResolver
@@ -506,7 +537,13 @@ class FileTransferEngine(private val context: Context) {
     }
 
     private fun finalizeDestination(destination: ReceiveDestination, success: Boolean) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && destination.mediaUri != null) {
+        if (destination.safUri != null) {
+            if (!success) {
+                try {
+                    DocumentsContract.deleteDocument(context.contentResolver, destination.safUri)
+                } catch (_: Exception) {}
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && destination.mediaUri != null) {
             try {
                 if (success) {
                     val values = ContentValues().apply {

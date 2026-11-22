@@ -14,7 +14,14 @@ enum class AppScreen {
     HOME,
     RADAR,
     RECEIVE,
-    TRANSFER
+    TRANSFER,
+    SETTINGS
+}
+
+enum class AppThemeMode(val label: String) {
+    DEFAULT("Default"),
+    LIGHT("Light"),
+    DARK("Dark")
 }
 
 enum class TransferDirection {

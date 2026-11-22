@@ -61,9 +61,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.model.AppScreen
+import com.example.model.AppThemeMode
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.RadarScreen
 import com.example.ui.screens.ReceiveScreen
+import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.TransferScreen
 import com.example.ui.theme.AppTheme
 import com.example.viewmodel.MainViewModel
@@ -87,7 +89,13 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val darkTheme = isSystemInDarkTheme()
+            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val systemDarkTheme = isSystemInDarkTheme()
+            val darkTheme = when (themeMode) {
+                AppThemeMode.DEFAULT -> systemDarkTheme
+                AppThemeMode.LIGHT -> false
+                AppThemeMode.DARK -> true
+            }
             val pendingSharedUris by incomingSharedUris.collectAsStateWithLifecycle()
 
             DisposableEffect(darkTheme) {
@@ -312,6 +320,9 @@ fun MainAppContent(
     val transferError by viewModel.transferError.collectAsStateWithLifecycle()
     val thisDevice by viewModel.thisDevice.collectAsStateWithLifecycle()
     val userName by viewModel.userName.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val storageTreeUri by viewModel.storageTreeUri.collectAsStateWithLifecycle()
+    val storageDisplayName by viewModel.storageDisplayName.collectAsStateWithLifecycle()
     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
     val connectingDeviceAddress by viewModel.connectingDeviceAddress.collectAsStateWithLifecycle()
 
@@ -349,6 +360,24 @@ fun MainAppContent(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         awaitingExternalModal = false
+    }
+
+    // Receive storage folder picker launcher (SAF)
+    val storagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { treeUri ->
+        awaitingExternalModal = false
+        if (treeUri != null) {
+            try {
+                val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                context.contentResolver.takePersistableUriPermission(treeUri, flags)
+                viewModel.setStorageTreeUri(treeUri.toString())
+            } catch (_: Exception) {
+                scope.launch {
+                    snackbarHostState.showSnackbar("Unable to use selected folder")
+                }
+            }
+        }
     }
 
     // Settings launcher
@@ -552,6 +581,9 @@ fun MainAppContent(
                                     }
                                 }
                             }
+                        },
+                        onSettingsClick = {
+                            viewModel.openSettings()
                         }
                     )
                 }
@@ -597,6 +629,30 @@ fun MainAppContent(
                         onCancelFile = { fileId -> viewModel.cancelTransferringFile(fileId) },
                         onCancelAll = { viewModel.resetToHome() },
                         onDone = { viewModel.resetToHome() }
+                    )
+                }
+
+                AppScreen.SETTINGS -> {
+                    BackHandler {
+                        viewModel.resetToHome()
+                    }
+                    SettingsScreen(
+                        storageDisplayName = storageDisplayName,
+                        hasCustomStorage = storageTreeUri != null,
+                        selectedTheme = themeMode,
+                        onSelectStorageClick = {
+                            awaitingExternalModal = true
+                            storagePickerLauncher.launch(null)
+                        },
+                        onResetStorageClick = {
+                            viewModel.setStorageTreeUri(null)
+                        },
+                        onThemeSelected = { mode ->
+                            viewModel.setThemeMode(mode)
+                        },
+                        onBackClick = {
+                            viewModel.resetToHome()
+                        }
                     )
                 }
             }

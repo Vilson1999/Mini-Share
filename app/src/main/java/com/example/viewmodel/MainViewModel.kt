@@ -7,11 +7,13 @@ import android.database.Cursor
 import android.net.Uri
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
+import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.model.AppScreen
+import com.example.model.AppThemeMode
 import com.example.model.FileItem
 import com.example.model.TransferDirection
 import com.example.model.TransferStats
@@ -32,6 +34,7 @@ import java.util.UUID
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val prefs = application.getSharedPreferences("mini_share_prefs", Context.MODE_PRIVATE)
     private val wifiDirectManager = WifiDirectManager(application)
     private val bluetoothDiscoveryHelper = BluetoothDiscoveryHelper(application)
     private val transferEngine = FileTransferEngine(application)
@@ -73,6 +76,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _userName = MutableStateFlow(android.os.Build.MODEL ?: "User")
     val userName: StateFlow<String> = _userName.asStateFlow()
+
+    private val _themeMode = MutableStateFlow(loadThemeMode())
+    val themeMode: StateFlow<AppThemeMode> = _themeMode.asStateFlow()
+
+    private val _storageTreeUri = MutableStateFlow(prefs.getString("storage_tree_uri", null))
+    val storageTreeUri: StateFlow<String?> = _storageTreeUri.asStateFlow()
+
+    private val _storageDisplayName = MutableStateFlow(formatTreeUriDisplayName(_storageTreeUri.value))
+    val storageDisplayName: StateFlow<String> = _storageDisplayName.asStateFlow()
+
+    private fun loadThemeMode(): AppThemeMode {
+        val saved = prefs.getString("theme_mode", AppThemeMode.DEFAULT.name)
+        return AppThemeMode.entries.firstOrNull { it.name == saved } ?: AppThemeMode.DEFAULT
+    }
+
+    private fun formatTreeUriDisplayName(uriString: String?): String {
+        if (uriString.isNullOrBlank()) return "Downloads / Mini Share"
+        return try {
+            val docId = DocumentsContract.getTreeDocumentId(Uri.parse(uriString))
+            val parts = docId.split(":", limit = 2)
+            val rootLabel = if (parts[0].equals("primary", ignoreCase = true)) "Internal Storage" else parts[0]
+            val subPath = parts.getOrNull(1)?.takeIf { it.isNotBlank() }
+            if (subPath != null) "$rootLabel / $subPath" else rootLabel
+        } catch (_: Exception) {
+            "Custom Folder"
+        }
+    }
+
+    fun setThemeMode(mode: AppThemeMode) {
+        _themeMode.value = mode
+        prefs.edit().putString("theme_mode", mode.name).apply()
+    }
+
+    fun setStorageTreeUri(uriString: String?) {
+        _storageTreeUri.value = uriString
+        _storageDisplayName.value = formatTreeUriDisplayName(uriString)
+        prefs.edit().apply {
+            if (uriString == null) remove("storage_tree_uri") else putString("storage_tree_uri", uriString)
+        }.apply()
+    }
+
+    fun openSettings() {
+        _currentScreen.value = AppScreen.SETTINGS
+    }
 
     init {
         viewModelScope.launch {
@@ -407,6 +454,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             transferEngine.receiveFiles(
                 isGroupOwner = isGroupOwner,
                 hostAddress = hostAddress,
+                storageTreeUri = _storageTreeUri.value,
                 onProgress = { updatedFiles, stats ->
                     _transferFiles.value = updatedFiles
                     _transferStats.value = stats
