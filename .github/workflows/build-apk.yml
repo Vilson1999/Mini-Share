@@ -75,16 +75,16 @@ jobs:
             echo "STORE_PASSWORD=$SECRET_STORE_PASS" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$SECRET_KEY_PASS" >> "$GITHUB_ENV"
           else
-            DEFAULT_PASS="minishare_release_key"
-            keytool -genkeypair -noprompt \
+            # Reuse the repository's deterministic keystore so every release shares the same signing certificate
+            # and supports seamless in-place app updates without requiring uninstall first.
+            base64 -d "${{ github.workspace }}/debug.keystore.base64" > "${{ github.workspace }}/my-upload-key.jks"
+            keytool -changealias -noprompt \
               -keystore "${{ github.workspace }}/my-upload-key.jks" \
-              -alias upload \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass "$DEFAULT_PASS" -keypass "$DEFAULT_PASS" \
-              -dname "CN=Vilson Sonkar, O=Mini Share, C=IN"
+              -alias androiddebugkey -destalias upload \
+              -storepass android -keypass android
             echo "KEYSTORE_PATH=${{ github.workspace }}/my-upload-key.jks" >> "$GITHUB_ENV"
-            echo "STORE_PASSWORD=$DEFAULT_PASS" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=$DEFAULT_PASS" >> "$GITHUB_ENV"
+            echo "STORE_PASSWORD=android" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
           fi
 
       - name: Build Separate ARMv7 & ARMv8 Release APKs
@@ -153,17 +153,20 @@ jobs:
             "- **ARMv8 (\`arm64-v8a\`) APK Size:** ${{ steps.apks.outputs.armv8_size }}" \
             "" \
             "### New Features" \
+            "- **Share App (APK):** Added a top-right Share App pill button on Home to share the installed APK via Bluetooth, Quick Share, or the Android system share menu" \
             "- Offline Wi-Fi Direct peer-to-peer file sharing with Bluetooth discovery helpers and DNS-SD service naming" \
             "- Redesigned Home screen with large circular **Send** and **Receive** buttons with labels inside the icon orbs" \
-            "- Top-center device name pills on Home and Receive screens, plus a top-center file count and size pill on Searching" \
+            "- Top-left device name pill on Home, top-center device name pill on Receive, and top-center file count and size pill on Searching" \
             "- Live Transfer screen with per-file progress, speed, remaining time, cancellation, and Android Share menu support" \
             "" \
             "### Fixes" \
+            "- Fixed in-place app update failures by using a consistent signing certificate and auto-incrementing \`versionCode\` across releases" \
             "- Fixed debug build JDWP agent startup error by enabling \`isDebuggable\` on the debug build type" \
             "- Added \`.env.example\` for Secrets Gradle Plugin configuration" \
             "- Removed the right-side refresh button on Searching and continuous animations on Home action buttons" \
             "" \
             "### Improved" \
+            "- Kept the display awake while the app is open in the foreground and stopped all discovery/transfer work when backgrounded" \
             "- Maximum APK compression and shrinking using R8 integrated resource shrinking, Compose trace stripping, and compressed DEX/JNI packaging" \
             "- Separate split release APKs for ARMv7 (\`armeabi-v7a\`) and ARMv8 (\`arm64-v8a\`)" \
             "- Responsive portrait and landscape layouts using Jetpack Compose and Material 3, saving received files to **Downloads/Mini Share**")
@@ -195,17 +198,20 @@ jobs:
             echo "- **Android Support:** Android 9+ (minSdk 28) • Target SDK 36"
             echo ""
             echo "### New Features"
+            echo "- **Share App (APK):** Added a top-right Share App pill button on Home to share the APK via Bluetooth, Quick Share, or system share"
             echo "- Offline Wi-Fi Direct peer-to-peer file sharing with Bluetooth discovery helpers"
             echo "- Large circular **Send** and **Receive** buttons with labels inside the icon orbs"
-            echo "- Top-center device name pills (Home & Receive) and top-center file count/size pill (Searching)"
+            echo "- Top-left device name pill (Home), top-center device name pill (Receive), and top-center file count/size pill (Searching)"
             echo "- Live Transfer progress, speed, remaining time, cancellation, and Android Share menu support"
             echo ""
             echo "### Fixes"
+            echo "- Fixed in-place app updates by using a consistent signing keystore and incrementing \`versionCode\` across releases"
             echo "- Enabled \`isDebuggable\` on debug builds to resolve JDWP startup errors"
             echo "- Added \`.env.example\` for Secrets Gradle Plugin compatibility"
             echo "- Removed Searching refresh button and Home button continuous animations"
             echo ""
             echo "### Improved"
+            echo "- Kept screen awake while foregrounded and prevented background execution when minimized"
             echo "- Smaller compressed ARMv7 & ARMv8 split APKs via R8 integrated resource shrinking and Compose trace stripping"
             echo "- Responsive Jetpack Compose & Material 3 layouts with **Downloads/Mini Share** Scoped Storage output"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -11,11 +11,19 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
+    val ciRunNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+    val resolvedVersionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull()
+      ?: ciRunNumber?.plus(1)
+      ?: 2
+    val resolvedVersionName = project.findProperty("versionName")?.toString()
+      ?: ciRunNumber?.let { "1.0.$it" }
+      ?: "1.1"
+
     applicationId = "com.minishare.vilson"
     minSdk = 28
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = resolvedVersionCode
+    versionName = resolvedVersionName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     resourceConfigurations += listOf("en")
