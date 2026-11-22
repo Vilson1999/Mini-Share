@@ -60,7 +60,7 @@ fun HomeScreen(
             .fillMaxSize()
             .background(colors.background)
     ) {
-        // Top row: non-editable device name pill (left) + Share App pill & Settings icon (right)
+        // Top row: device name button pill opening Settings (left) + Share App pill (right)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -68,16 +68,30 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            val settingsLabel = stringResource(R.string.settings)
+            Row(
                 modifier = Modifier
                     .weight(1f, fill = false)
-                    .heightIn(min = 40.dp)
+                    .heightIn(min = 48.dp)
                     .clip(CircleShape)
                     .background(colors.surfaceVariant)
                     .border(1.dp, colors.outline, CircleShape)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = settingsLabel,
+                        onClick = onSettingsClick
+                    )
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .testTag("settings_button"),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(
+                    imageVector = AppIcons.Devices,
+                    contentDescription = null,
+                    tint = colors.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = userName,
                     color = colors.onSurface,
@@ -89,66 +103,38 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
+            val shareAppLabel = stringResource(R.string.share_app)
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(CircleShape)
+                    .background(colors.primary.copy(alpha = 0.14f))
+                    .border(1.dp, colors.primary.copy(alpha = 0.45f), CircleShape)
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = shareAppLabel,
+                        onClick = onShareApkClick
+                    )
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .testTag("share_apk_button"),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val shareAppLabel = stringResource(R.string.share_app)
-                Row(
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .clip(CircleShape)
-                        .background(colors.primary.copy(alpha = 0.14f))
-                        .border(1.dp, colors.primary.copy(alpha = 0.45f), CircleShape)
-                        .clickable(
-                            role = Role.Button,
-                            onClickLabel = shareAppLabel,
-                            onClick = onShareApkClick
-                        )
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                        .testTag("share_apk_button"),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = AppIcons.Share,
-                        contentDescription = null,
-                        tint = colors.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = shareAppLabel,
-                        color = colors.primary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                }
-
-                val settingsLabel = stringResource(R.string.settings)
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(colors.surfaceVariant)
-                        .border(1.dp, colors.outline, CircleShape)
-                        .clickable(
-                            role = Role.Button,
-                            onClickLabel = settingsLabel,
-                            onClick = onSettingsClick
-                        )
-                        .testTag("settings_button"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = AppIcons.Settings,
-                        contentDescription = settingsLabel,
-                        tint = colors.onSurface,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                Icon(
+                    imageVector = AppIcons.Share,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = shareAppLabel,
+                    color = colors.primary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
             }
         }
 
