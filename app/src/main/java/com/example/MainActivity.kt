@@ -61,7 +61,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.model.AppScreen
-import com.example.model.AppThemeMode
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.RadarScreen
 import com.example.ui.screens.ReceiveScreen
@@ -89,13 +88,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
-            val systemDarkTheme = isSystemInDarkTheme()
-            val darkTheme = when (themeMode) {
-                AppThemeMode.DEFAULT -> systemDarkTheme
-                AppThemeMode.LIGHT -> false
-                AppThemeMode.DARK -> true
-            }
+            val darkTheme = isSystemInDarkTheme()
             val pendingSharedUris by incomingSharedUris.collectAsStateWithLifecycle()
 
             DisposableEffect(darkTheme) {
@@ -320,8 +313,6 @@ fun MainAppContent(
     val transferError by viewModel.transferError.collectAsStateWithLifecycle()
     val thisDevice by viewModel.thisDevice.collectAsStateWithLifecycle()
     val userName by viewModel.userName.collectAsStateWithLifecycle()
-    val hasCustomUserName by viewModel.hasCustomUserName.collectAsStateWithLifecycle()
-    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val storageTreeUri by viewModel.storageTreeUri.collectAsStateWithLifecycle()
     val storageDisplayName by viewModel.storageDisplayName.collectAsStateWithLifecycle()
     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
@@ -386,17 +377,7 @@ fun MainAppContent(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
         awaitingExternalModal = false
-        val action = pendingAction
-        if (action != null) {
-            val missing = getMissingRequiredSetting(context)
-            if (missing == null) {
-                missingSetting = null
-                pendingAction = null
-                action()
-            } else {
-                missingSetting = missing
-            }
-        }
+        pendingAction?.let(proceedWithChecks)
     }
 
     // Permission launcher
@@ -448,14 +429,7 @@ fun MainAppContent(
                     awaitingExternalModal = false
                     val action = pendingAction
                     if (action != null && missingSetting != null) {
-                        val missing = getMissingRequiredSetting(context)
-                        if (missing == null) {
-                            missingSetting = null
-                            pendingAction = null
-                            action()
-                        } else {
-                            missingSetting = missing
-                        }
+                        proceedWithChecks(action)
                     }
                 }
                 Lifecycle.Event.ON_STOP -> {
@@ -638,30 +612,14 @@ fun MainAppContent(
                         viewModel.resetToHome()
                     }
                     SettingsScreen(
-                        userName = userName,
-                        hasCustomUserName = hasCustomUserName,
                         storageDisplayName = storageDisplayName,
                         hasCustomStorage = storageTreeUri != null,
-                        selectedTheme = themeMode,
-                        onSaveUserName = { name ->
-                            if (viewModel.updateUserName(name)) {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("User name updated")
-                                }
-                            }
-                        },
-                        onResetUserNameClick = {
-                            viewModel.resetUserNameToDefault()
-                        },
                         onSelectStorageClick = {
                             awaitingExternalModal = true
                             storagePickerLauncher.launch(null)
                         },
                         onResetStorageClick = {
                             viewModel.setStorageTreeUri(null)
-                        },
-                        onThemeSelected = { mode ->
-                            viewModel.setThemeMode(mode)
                         },
                         onBackClick = {
                             viewModel.resetToHome()

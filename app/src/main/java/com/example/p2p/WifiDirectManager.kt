@@ -78,26 +78,23 @@ class WifiDirectManager(private val context: Context) {
         }
     }
 
+    private fun withFriendlyName(device: WifiP2pDevice, addr: String): WifiP2pDevice {
+        val friendlyName = servicePeerNames[addr]
+        return if (!friendlyName.isNullOrBlank() && friendlyName != device.deviceName) {
+            WifiP2pDevice(device).apply { deviceName = friendlyName }
+        } else {
+            device
+        }
+    }
+
     private fun publishMergedPeers() {
         val merged = LinkedHashMap<String, WifiP2pDevice>()
         for ((addr, device) in systemPeers) {
-            val friendlyName = servicePeerNames[addr]
-            if (!friendlyName.isNullOrBlank() && friendlyName != device.deviceName) {
-                merged[addr] = WifiP2pDevice(device).apply {
-                    deviceName = friendlyName
-                }
-            } else {
-                merged[addr] = device
-            }
+            merged[addr] = withFriendlyName(device, addr)
         }
         for ((addr, device) in servicePeers) {
             if (!merged.containsKey(addr)) {
-                val friendlyName = servicePeerNames[addr]
-                merged[addr] = if (!friendlyName.isNullOrBlank()) {
-                    WifiP2pDevice(device).apply { deviceName = friendlyName }
-                } else {
-                    device
-                }
+                merged[addr] = withFriendlyName(device, addr)
             }
         }
         // Show peers advertising Mini Share first
@@ -138,10 +135,10 @@ class WifiDirectManager(private val context: Context) {
 
                     WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                         val p2pInfo = intent.parcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
-                        if (p2pInfo?.groupFormed == true && p2pInfo.groupOwnerAddress != null) {
-                            _connectionInfo.value = p2pInfo
-                            requestConnectionInfo()
-                        } else if (p2pInfo?.groupFormed == true) {
+                        if (p2pInfo?.groupFormed == true) {
+                            if (p2pInfo.groupOwnerAddress != null) {
+                                _connectionInfo.value = p2pInfo
+                            }
                             requestConnectionInfo()
                         } else {
                             _connectionInfo.value = null

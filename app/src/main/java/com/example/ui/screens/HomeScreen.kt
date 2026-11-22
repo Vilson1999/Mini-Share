@@ -145,78 +145,53 @@ fun HomeScreen(
             contentAlignment = Alignment.Center
         ) {
             val isWide = maxWidth >= 520.dp && maxWidth > maxHeight
+            val circleSize = if (isWide) {
+                minOf((maxWidth - 112.dp) / 2f, maxHeight - 48.dp).coerceIn(148.dp, 220.dp)
+            } else {
+                minOf((maxHeight - 88.dp) / 2f, maxWidth - 56.dp).coerceIn(148.dp, 212.dp)
+            }
+
+            val buttons: @Composable () -> Unit = {
+                CircleActionButton(
+                    title = "SEND",
+                    icon = AppIcons.Send,
+                    circleSize = circleSize,
+                    iconOffsetX = 4.dp,
+                    primaryColor = colors.primary,
+                    secondaryColor = ElectricBlue,
+                    surfaceColor = colors.surfaceVariant,
+                    titleColor = colors.onSurface,
+                    testTag = "send_button",
+                    onClick = onSendClick
+                )
+
+                CircleActionButton(
+                    title = "RECEIVE",
+                    icon = AppIcons.FileDownload,
+                    circleSize = circleSize,
+                    iconOffsetX = 0.dp,
+                    primaryColor = colors.secondary,
+                    secondaryColor = DeepViolet,
+                    surfaceColor = colors.surfaceVariant,
+                    titleColor = colors.onSurface,
+                    testTag = "receive_button",
+                    onClick = onReceiveClick
+                )
+            }
 
             if (isWide) {
-                val circleSize = minOf(
-                    (maxWidth - 112.dp) / 2f,
-                    maxHeight - 48.dp
-                ).coerceIn(148.dp, 220.dp)
-
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(48.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CircleActionButton(
-                        title = "SEND",
-                        icon = AppIcons.Send,
-                        circleSize = circleSize,
-                        iconOffsetX = 4.dp,
-                        primaryColor = colors.primary,
-                        secondaryColor = ElectricBlue,
-                        surfaceColor = colors.surfaceVariant,
-                        titleColor = colors.onSurface,
-                        testTag = "send_button",
-                        onClick = onSendClick
-                    )
-
-                    CircleActionButton(
-                        title = "RECEIVE",
-                        icon = AppIcons.FileDownload,
-                        circleSize = circleSize,
-                        iconOffsetX = 0.dp,
-                        primaryColor = colors.secondary,
-                        secondaryColor = DeepViolet,
-                        surfaceColor = colors.surfaceVariant,
-                        titleColor = colors.onSurface,
-                        testTag = "receive_button",
-                        onClick = onReceiveClick
-                    )
+                    buttons()
                 }
             } else {
-                val circleSize = minOf(
-                    (maxHeight - 88.dp) / 2f,
-                    maxWidth - 56.dp
-                ).coerceIn(148.dp, 212.dp)
-
                 Column(
                     verticalArrangement = Arrangement.spacedBy(32.dp, Alignment.CenterVertically),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    CircleActionButton(
-                        title = "SEND",
-                        icon = AppIcons.Send,
-                        circleSize = circleSize,
-                        iconOffsetX = 4.dp,
-                        primaryColor = colors.primary,
-                        secondaryColor = ElectricBlue,
-                        surfaceColor = colors.surfaceVariant,
-                        titleColor = colors.onSurface,
-                        testTag = "send_button",
-                        onClick = onSendClick
-                    )
-
-                    CircleActionButton(
-                        title = "RECEIVE",
-                        icon = AppIcons.FileDownload,
-                        circleSize = circleSize,
-                        iconOffsetX = 0.dp,
-                        primaryColor = colors.secondary,
-                        secondaryColor = DeepViolet,
-                        surfaceColor = colors.surfaceVariant,
-                        titleColor = colors.onSurface,
-                        testTag = "receive_button",
-                        onClick = onReceiveClick
-                    )
+                    buttons()
                 }
             }
         }

@@ -297,12 +297,7 @@ class FileTransferEngine(private val context: Context) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val isExpectedClosure = !isRunning.get() || !coroutineContext.isActive ||
-                    (e is SocketException && e.message?.contains("closed", ignoreCase = true) == true)
-            if (!isExpectedClosure) {
-                Log.e("FileTransferEngine", "Send failed", e)
-                onComplete(false, e.localizedMessage)
-            }
+            reportTransferException("Send failed", e, onComplete)
         } finally {
             isRunning.set(false)
             closeSockets()
@@ -439,15 +434,23 @@ class FileTransferEngine(private val context: Context) {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val isExpectedClosure = !isRunning.get() || !coroutineContext.isActive ||
-                    (e is SocketException && e.message?.contains("closed", ignoreCase = true) == true)
-            if (!isExpectedClosure) {
-                Log.e("FileTransferEngine", "Receive failed", e)
-                onComplete(false, e.localizedMessage)
-            }
+            reportTransferException("Receive failed", e, onComplete)
         } finally {
             isRunning.set(false)
             closeSockets()
+        }
+    }
+
+    private suspend fun reportTransferException(
+        tagMessage: String,
+        e: Exception,
+        onComplete: (Boolean, String?) -> Unit
+    ) {
+        val isExpectedClosure = !isRunning.get() || !coroutineContext.isActive ||
+            (e is SocketException && e.message?.contains("closed", ignoreCase = true) == true)
+        if (!isExpectedClosure) {
+            Log.e("FileTransferEngine", tagMessage, e)
+            onComplete(false, e.localizedMessage)
         }
     }
 
@@ -576,6 +579,12 @@ class FileTransferEngine(private val context: Context) {
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             "Mini Share"
         )
+        val appDownloadsDir = {
+            File(
+                context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir,
+                "Mini Share"
+            ).apply { mkdirs() }
+        }
         val targetDir = try {
             if (!publicMiniShare.exists()) {
                 publicMiniShare.mkdirs()
@@ -583,16 +592,10 @@ class FileTransferEngine(private val context: Context) {
             if (publicMiniShare.exists() && publicMiniShare.canWrite()) {
                 publicMiniShare
             } else {
-                File(
-                    context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir,
-                    "Mini Share"
-                ).apply { mkdirs() }
+                appDownloadsDir()
             }
         } catch (_: Exception) {
-            File(
-                context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir,
-                "Mini Share"
-            ).apply { mkdirs() }
+            appDownloadsDir()
         }
 
         var target = File(targetDir, safeName)

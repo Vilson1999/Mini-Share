@@ -36,24 +36,10 @@ object AppIcons {
         )
     }
 
-    val Contrast: ImageVector by lazy {
-        vectorIcon(
-            name = "Contrast",
-            pathData = "M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,20V4c4.41,0 8,3.59 8,8s-3.59,8 -8,8z"
-        )
-    }
-
     val Devices: ImageVector by lazy {
         vectorIcon(
             name = "Devices",
             pathData = "M4,6h18V4H4c-1.1,0 -2,0.9 -2,2v11H0v3h14v-3H4V6zM23,8h-6c-0.55,0 -1,0.45 -1,1v10c0,0.55 0.45,1 1,1h6c0.55,0 1,-0.45 1,-1V9c0,-0.55 -0.45,-1 -1,-1zM22,17h-4v-7h4v7z"
-        )
-    }
-
-    val Person: ImageVector by lazy {
-        vectorIcon(
-            name = "Person",
-            pathData = "M12,12c2.21,0 4,-1.79 4,-4s-1.79,-4 -4,-4 -4,1.79 -4,4 1.79,4 4,4zM12,14c-2.67,0 -8,1.34 -8,4v2h16v-2c0,-2.66 -5.33,-4 -8,-4z"
         )
     }
 

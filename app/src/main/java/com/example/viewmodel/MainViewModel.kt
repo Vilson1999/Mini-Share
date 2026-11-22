@@ -14,7 +14,6 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.model.AppScreen
-import com.example.model.AppThemeMode
 import com.example.model.FileItem
 import com.example.model.TransferDirection
 import com.example.model.TransferStats
@@ -75,14 +74,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isDiscovering = wifiDirectManager.isDiscovering
     val thisDevice = wifiDirectManager.thisDevice
 
-    private val _hasCustomUserName = MutableStateFlow(isValidDisplayName(prefs.getString(PREF_USER_NAME, null)))
-    val hasCustomUserName: StateFlow<Boolean> = _hasCustomUserName.asStateFlow()
-
-    private val _userName = MutableStateFlow(loadUserName(application))
+    private val _userName = MutableStateFlow(resolveDefaultDeviceName(application))
     val userName: StateFlow<String> = _userName.asStateFlow()
-
-    private val _themeMode = MutableStateFlow(loadThemeMode())
-    val themeMode: StateFlow<AppThemeMode> = _themeMode.asStateFlow()
 
     private val _storageTreeUri = MutableStateFlow(prefs.getString("storage_tree_uri", null))
     val storageTreeUri: StateFlow<String?> = _storageTreeUri.asStateFlow()
@@ -101,42 +94,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) {
             null
         }
-        val candidates = listOf(
+        return listOf(
             systemDeviceName,
             wifiDirectManager.thisDevice.value?.deviceName,
             android.os.Build.MODEL
-        )
-        return candidates.firstOrNull { isValidDisplayName(it) }?.trim()?.take(MAX_USER_NAME_LENGTH)
+        ).firstOrNull { isValidDisplayName(it) }?.trim()?.take(MAX_USER_NAME_LENGTH)
             ?: DEFAULT_USER_NAME
-    }
-
-    private fun loadUserName(context: Context): String {
-        val saved = prefs.getString(PREF_USER_NAME, null)
-        return if (isValidDisplayName(saved)) {
-            saved!!.trim().take(MAX_USER_NAME_LENGTH)
-        } else {
-            resolveDefaultDeviceName(context)
-        }
-    }
-
-    fun updateUserName(newName: String): Boolean {
-        val sanitized = newName.trim().take(MAX_USER_NAME_LENGTH)
-        if (!isValidDisplayName(sanitized)) return false
-        _userName.value = sanitized
-        _hasCustomUserName.value = true
-        prefs.edit().putString(PREF_USER_NAME, sanitized).apply()
-        return true
-    }
-
-    fun resetUserNameToDefault() {
-        prefs.edit().remove(PREF_USER_NAME).apply()
-        _hasCustomUserName.value = false
-        _userName.value = resolveDefaultDeviceName(getApplication())
-    }
-
-    private fun loadThemeMode(): AppThemeMode {
-        val saved = prefs.getString("theme_mode", AppThemeMode.DEFAULT.name)
-        return AppThemeMode.entries.firstOrNull { it.name == saved } ?: AppThemeMode.DEFAULT
     }
 
     private fun formatTreeUriDisplayName(uriString: String?): String {
@@ -150,11 +113,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) {
             "Custom Folder"
         }
-    }
-
-    fun setThemeMode(mode: AppThemeMode) {
-        _themeMode.value = mode
-        prefs.edit().putString("theme_mode", mode.name).apply()
     }
 
     fun setStorageTreeUri(uriString: String?) {
@@ -173,10 +131,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             wifiDirectManager.thisDevice.collect { device ->
                 val p2pName = device?.deviceName
-                if (!_hasCustomUserName.value &&
-                    _userName.value == DEFAULT_USER_NAME &&
-                    isValidDisplayName(p2pName)
-                ) {
+                if (_userName.value == DEFAULT_USER_NAME && isValidDisplayName(p2pName)) {
                     _userName.value = p2pName!!.trim().take(MAX_USER_NAME_LENGTH)
                 }
             }
@@ -214,7 +169,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
-        private const val PREF_USER_NAME = "user_name"
         private const val DEFAULT_USER_NAME = "Mini Share User"
         private const val MAX_USER_NAME_LENGTH = 32
     }
