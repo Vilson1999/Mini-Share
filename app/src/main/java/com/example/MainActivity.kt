@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -50,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.core.view.WindowCompat
@@ -65,8 +67,11 @@ import com.example.ui.screens.ReceiveScreen
 import com.example.ui.screens.TransferScreen
 import com.example.ui.theme.AppTheme
 import com.example.viewmodel.MainViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 class MainActivity : ComponentActivity() {
 
@@ -215,6 +220,38 @@ private fun extractSharedUris(intent: Intent?): List<Uri> {
     return result.toList()
 }
 
+private suspend fun buildShareApkChooserIntent(context: Context): Intent = withContext(Dispatchers.IO) {
+    val sourceApk = File(context.applicationInfo.sourceDir)
+    val shareDir = File(context.cacheDir, "share").apply { mkdirs() }
+    val targetApk = File(shareDir, "Mini_Share.apk")
+    if (!targetApk.exists() ||
+        targetApk.length() != sourceApk.length() ||
+        targetApk.lastModified() < sourceApk.lastModified()
+    ) {
+        sourceApk.inputStream().use { input ->
+            targetApk.outputStream().use { output ->
+                input.copyTo(output, bufferSize = 64 * 1024)
+            }
+        }
+    }
+
+    val apkUri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        targetApk
+    )
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "application/vnd.android.package-archive"
+        putExtra(Intent.EXTRA_STREAM, apkUri)
+        putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.app_name))
+        clipData = ClipData.newRawUri(null, apkUri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    Intent.createChooser(shareIntent, context.getString(R.string.share_app)).apply {
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+}
+
 internal fun getRequiredPermissions(): Array<String> {
     return when {
         // Android 13 - 17 (API 33+): Wi-Fi Nearby + Bluetooth Nearby runtime permissions
@@ -280,6 +317,7 @@ fun MainAppContent(
 
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var awaitingExternalModal by remember { mutableStateOf(false) }
+    var isSharingApk by remember { mutableStateOf(false) }
     var missingSetting by remember { mutableStateOf<RequiredSetting?>(null) }
 
     val proceedWithChecks: (() -> Unit) -> Unit = remember(context) {
@@ -304,6 +342,13 @@ fun MainAppContent(
         if (uris.isNotEmpty()) {
             viewModel.onFilesPicked(context, uris)
         }
+    }
+
+    // System APK share launcher
+    val shareLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        awaitingExternalModal = false
     }
 
     // Settings launcher
@@ -489,6 +534,23 @@ fun MainAppContent(
                         onReceiveClick = {
                             requestActionWithPermissionsAndSettings {
                                 viewModel.onReceiveClicked()
+                            }
+                        },
+                        onShareApkClick = {
+                            if (!isSharingApk) {
+                                isSharingApk = true
+                                scope.launch {
+                                    try {
+                                        val chooser = buildShareApkChooserIntent(context)
+                                        awaitingExternalModal = true
+                                        shareLauncher.launch(chooser)
+                                    } catch (_: Exception) {
+                                        awaitingExternalModal = false
+                                        snackbarHostState.showSnackbar("Unable to share app APK")
+                                    } finally {
+                                        isSharingApk = false
+                                    }
+                                }
                             }
                         }
                     )

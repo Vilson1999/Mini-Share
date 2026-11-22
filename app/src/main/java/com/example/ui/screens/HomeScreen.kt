@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,12 +33,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.components.AppIcons
 import com.example.ui.theme.DeepViolet
 import com.example.ui.theme.ElectricBlue
@@ -46,7 +49,8 @@ import com.example.ui.theme.ElectricBlue
 fun HomeScreen(
     userName: String,
     onSendClick: () -> Unit,
-    onReceiveClick: () -> Unit
+    onReceiveClick: () -> Unit,
+    onShareApkClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
 
@@ -55,23 +59,68 @@ fun HomeScreen(
             .fillMaxSize()
             .background(colors.background)
     ) {
-        // Device name centered at top as plain non-editable text
-        Box(
+        // Top row: non-editable device name pill (left) + Share App pill button (right)
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 18.dp),
-            contentAlignment = Alignment.Center
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = userName,
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.5.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.testTag("user_name_text")
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .heightIn(min = 40.dp)
+                    .clip(CircleShape)
+                    .background(colors.surfaceVariant)
+                    .border(1.dp, colors.outline, CircleShape)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = userName,
+                    color = colors.onSurface,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("user_name_text")
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            val shareAppLabel = stringResource(R.string.share_app)
+            Row(
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(CircleShape)
+                    .background(colors.primary.copy(alpha = 0.14f))
+                    .border(1.dp, colors.primary.copy(alpha = 0.45f), CircleShape)
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = shareAppLabel,
+                        onClick = onShareApkClick
+                    )
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .testTag("share_apk_button"),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = AppIcons.Share,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = shareAppLabel,
+                    color = colors.primary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
         }
 
         BoxWithConstraints(
