@@ -87,85 +87,84 @@ jobs:
             # Generate a deterministic RSA-2048 keystore so every CI release shares the exact same signing
             # certificate and supports in-place app updates even without KEYSTORE_BASE64 configured.
             WORK_DIR="$(mktemp -d)"
-            python3 - "$WORK_DIR/rsa_priv.der" <<'PYEOF'
-import hashlib, math, sys
+            python3 -c 'import sys, textwrap; exec(textwrap.dedent("""
+            import hashlib, math, sys
 
-def next_bytes(seed_label, nbytes):
-    out = bytearray()
-    c = 0
-    while len(out) < nbytes:
-        out.extend(hashlib.sha256(seed_label + c.to_bytes(4, "big")).digest())
-        c += 1
-    return bytes(out[:nbytes])
+            def next_bytes(seed_label, nbytes):
+                out = bytearray()
+                c = 0
+                while len(out) < nbytes:
+                    out.extend(hashlib.sha256(seed_label + c.to_bytes(4, "big")).digest())
+                    c += 1
+                return bytes(out[:nbytes])
 
-def is_prime(n):
-    for p in (2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53):
-        if n % p == 0:
-            return n == p
-    d = n - 1
-    s = 0
-    while d % 2 == 0:
-        d //= 2
-        s += 1
-    for a in (2,3,5,7,11,13,17,19,23,29,31,37):
-        x = pow(a, d, n)
-        if x == 1 or x == n - 1:
-            continue
-        for _ in range(s - 1):
-            x = (x * x) % n
-            if x == n - 1:
-                break
-        else:
-            return False
-    return True
+            def is_prime(n):
+                for p in (2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53):
+                    if n % p == 0:
+                        return n == p
+                d = n - 1
+                s = 0
+                while d % 2 == 0:
+                    d //= 2
+                    s += 1
+                for a in (2,3,5,7,11,13,17,19,23,29,31,37):
+                    x = pow(a, d, n)
+                    if x == 1 or x == n - 1:
+                        continue
+                    for _ in range(s - 1):
+                        x = (x * x) % n
+                        if x == n - 1:
+                            break
+                    else:
+                        return False
+                return True
 
-def det_prime(label, bits=1024):
-    raw = int.from_bytes(next_bytes(label, bits // 8), "big")
-    cand = raw | (1 << (bits - 1)) | (1 << (bits - 2)) | 1
-    while not is_prime(cand):
-        cand += 2
-    return cand
+            def det_prime(label, bits=1024):
+                raw = int.from_bytes(next_bytes(label, bits // 8), "big")
+                cand = raw | (1 << (bits - 1)) | (1 << (bits - 2)) | 1
+                while not is_prime(cand):
+                    cand += 2
+                return cand
 
-def der_tlv(tag, val):
-    l = len(val)
-    lb = bytes([l]) if l < 128 else bytes([0x80 | len(l.to_bytes((l.bit_length() + 7) // 8, "big"))]) + l.to_bytes((l.bit_length() + 7) // 8, "big")
-    return bytes([tag]) + lb + val
+            def der_tlv(tag, val):
+                l = len(val)
+                lb = bytes([l]) if l < 128 else bytes([0x80 | len(l.to_bytes((l.bit_length() + 7) // 8, "big"))]) + l.to_bytes((l.bit_length() + 7) // 8, "big")
+                return bytes([tag]) + lb + val
 
-def der_int(v):
-    b = v.to_bytes((v.bit_length() + 7) // 8 or 1, "big")
-    if b[0] & 0x80:
-        b = b"\x00" + b
-    return der_tlv(0x02, b)
+            def der_int(v):
+                b = v.to_bytes((v.bit_length() + 7) // 8 or 1, "big")
+                if b[0] & 0x80:
+                    b = b"\\x00" + b
+                return der_tlv(0x02, b)
 
-e = 65537
-p = det_prime(b"minishare.vilson.rsa.p.v1", 1024)
-q = det_prime(b"minishare.vilson.rsa.q.v1", 1024)
-n = p * q
-phi = (p - 1) * (q - 1)
-assert math.gcd(e, phi) == 1
-d = pow(e, -1, phi)
-dp, dq, iqmp = d % (p - 1), d % (q - 1), pow(q, -1, p)
-seq = b"".join(der_int(x) for x in (0, n, e, d, p, q, dp, dq, iqmp))
-with open(sys.argv[1], "wb") as f:
-    f.write(der_tlv(0x30, seq))
-PYEOF
+            e = 65537
+            p = det_prime(b"minishare.vilson.rsa.p.v1", 1024)
+            q = det_prime(b"minishare.vilson.rsa.q.v1", 1024)
+            n = p * q
+            phi = (p - 1) * (q - 1)
+            assert math.gcd(e, phi) == 1
+            d = pow(e, -1, phi)
+            dp, dq, iqmp = d % (p - 1), d % (q - 1), pow(q, -1, p)
+            seq = b"".join(der_int(x) for x in (0, n, e, d, p, q, dp, dq, iqmp))
+            with open(sys.argv[1], "wb") as f:
+                f.write(der_tlv(0x30, seq))
+            """))' "$WORK_DIR/rsa_priv.der"
             openssl rsa -inform DER -in "$WORK_DIR/rsa_priv.der" -out "$WORK_DIR/rsa_priv.pem" 2>/dev/null
             : > "$WORK_DIR/index.txt"
             echo "1A2B3C4D5E6F7081" > "$WORK_DIR/serial"
-            cat > "$WORK_DIR/ca.cnf" <<EOF
-[ ca ]
-default_ca = CA_default
-[ CA_default ]
-database = $WORK_DIR/index.txt
-serial = $WORK_DIR/serial
-new_certs_dir = $WORK_DIR
-default_md = sha256
-policy = policy_anything
-[ policy_anything ]
-countryName = optional
-organizationName = optional
-commonName = supplied
-EOF
+            printf '%s\n' \
+              "[ ca ]" \
+              "default_ca = CA_default" \
+              "[ CA_default ]" \
+              "database = $WORK_DIR/index.txt" \
+              "serial = $WORK_DIR/serial" \
+              "new_certs_dir = $WORK_DIR" \
+              "default_md = sha256" \
+              "policy = policy_anything" \
+              "[ policy_anything ]" \
+              "countryName = optional" \
+              "organizationName = optional" \
+              "commonName = supplied" > "$WORK_DIR/ca.cnf"
             openssl req -new -key "$WORK_DIR/rsa_priv.pem" -subj "/CN=Vilson Sonkar/O=Mini Share/C=IN" -out "$WORK_DIR/req.csr"
             openssl ca -batch -selfsign -config "$WORK_DIR/ca.cnf" -keyfile "$WORK_DIR/rsa_priv.pem" \
               -in "$WORK_DIR/req.csr" -startdate 20260101000000Z -enddate 20540101000000Z -out "$WORK_DIR/cert.pem" 2>/dev/null
