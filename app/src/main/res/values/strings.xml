@@ -6,4 +6,10 @@
     <string name="select_storage_subtitle">Choose receive file location</string>
     <string name="choose_folder">Choose Folder</string>
     <string name="reset_default">Default</string>
+    <string name="developer_name">Vilson Sonkar</string>
+    <string name="transfer_notification_channel_name">File Transfers</string>
+    <string name="transfer_notification_channel_desc">Shows active background file transfer progress</string>
+    <string name="transfer_sending_title">Sending files</string>
+    <string name="transfer_receiving_title">Receiving files</string>
+    <string name="transfer_cancel_action">Cancel</string>
 </resources>

@@ -140,8 +140,9 @@ fun HomeScreen(
 
         BoxWithConstraints(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
             val isWide = maxWidth >= 520.dp && maxWidth > maxHeight
@@ -194,6 +195,24 @@ fun HomeScreen(
                     buttons()
                 }
             }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(R.string.developer_name),
+                color = colors.onSurfaceVariant.copy(alpha = 0.82f),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 0.8.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.testTag("developer_name_text")
+            )
         }
     }
 }

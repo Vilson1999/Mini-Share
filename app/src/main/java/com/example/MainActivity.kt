@@ -322,6 +322,7 @@ fun MainAppContent(
     var awaitingExternalModal by remember { mutableStateOf(false) }
     var isSharingApk by remember { mutableStateOf(false) }
     var missingSetting by remember { mutableStateOf<RequiredSetting?>(null) }
+    var askedNotificationPermission by remember { mutableStateOf(false) }
 
     val proceedWithChecks: (() -> Unit) -> Unit = remember(context) {
         { action ->
@@ -418,7 +419,25 @@ fun MainAppContent(
         }
     }
 
-    // Never run discovery, transfers, or broadcast receivers in background
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) {
+        awaitingExternalModal = false
+    }
+
+    LaunchedEffect(isTransferActive) {
+        if (isTransferActive &&
+            !askedNotificationPermission &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            askedNotificationPermission = true
+            awaitingExternalModal = true
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // Run in background only while a file transfer is active; stop everything when idle
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {

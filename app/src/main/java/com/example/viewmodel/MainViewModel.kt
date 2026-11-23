@@ -21,6 +21,7 @@ import com.example.model.TransferStatus
 import com.example.p2p.BluetoothDiscoveryHelper
 import com.example.p2p.WifiDirectManager
 import com.example.transfer.FileTransferEngine
+import com.example.transfer.TransferForegroundService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,6 +70,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var transferJob: Job? = null
     private var discoveryJob: Job? = null
     private var connectTimeoutJob: Job? = null
+    @Volatile
+    private var isAppInBackground = false
 
     val peers = wifiDirectManager.peers
     val isDiscovering = wifiDirectManager.isDiscovering
@@ -163,6 +166,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         else -> Unit
                     }
+                }
+            }
+        }
+        viewModelScope.launch {
+            TransferForegroundService.cancelRequests.collect {
+                cancelAllTransfers()
+                if (isAppInBackground) {
+                    cleanupIdleBackgroundSession()
                 }
             }
         }
@@ -436,6 +447,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _isTransferComplete.value = false
         _transferError.value = null
         _currentScreen.value = AppScreen.TRANSFER
+        TransferForegroundService.start(
+            context = getApplication(),
+            direction = TransferDirection.SEND,
+            totalCount = _selectedFiles.value.size
+        )
 
         transferJob?.cancel()
         transferJob = viewModelScope.launch {
@@ -446,12 +462,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 onProgress = { updatedFiles, stats ->
                     _transferFiles.value = updatedFiles
                     _transferStats.value = stats
+                    updateForegroundServiceProgress(TransferDirection.SEND, updatedFiles, stats)
                 },
                 onComplete = { success, error ->
                     _isTransferActive.value = false
                     _isTransferComplete.value = true
+                    TransferForegroundService.stop(getApplication())
                     if (!success && error != null && !error.contains("closed", ignoreCase = true)) {
                         _transferError.value = error
+                    }
+                    if (isAppInBackground) {
+                        cleanupIdleBackgroundSession()
                     }
                 }
             )
@@ -466,6 +487,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _transferFiles.value = emptyList()
         _transferStats.value = TransferStats()
         _currentScreen.value = AppScreen.TRANSFER
+        TransferForegroundService.start(
+            context = getApplication(),
+            direction = TransferDirection.RECEIVE,
+            totalCount = 0
+        )
 
         transferEngine.stopTransfer()
         transferJob?.cancel()
@@ -477,16 +503,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 onProgress = { updatedFiles, stats ->
                     _transferFiles.value = updatedFiles
                     _transferStats.value = stats
+                    updateForegroundServiceProgress(TransferDirection.RECEIVE, updatedFiles, stats)
                 },
                 onComplete = { success, error ->
                     _isTransferActive.value = false
                     _isTransferComplete.value = success
+                    TransferForegroundService.stop(getApplication())
                     if (!success && error != null && !error.contains("closed", ignoreCase = true)) {
                         _transferError.value = error
+                    }
+                    if (isAppInBackground) {
+                        cleanupIdleBackgroundSession()
                     }
                 }
             )
         }
+    }
+
+    private fun updateForegroundServiceProgress(
+        direction: TransferDirection,
+        updatedFiles: List<FileItem>,
+        stats: TransferStats
+    ) {
+        val doneCount = updatedFiles.count {
+            it.status == TransferStatus.COMPLETED ||
+                it.status == TransferStatus.CANCELLED ||
+                it.status == TransferStatus.FAILED
+        }
+        TransferForegroundService.updateProgress(
+            direction = direction,
+            completedCount = doneCount,
+            totalCount = updatedFiles.size,
+            progressPercent = (stats.overallProgress * 100f).toInt(),
+            speedText = stats.formattedSpeed
+        )
     }
 
     fun cancelTransferringFile(fileId: String) {
@@ -504,6 +554,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         transferEngine.stopTransfer()
         transferJob?.cancel()
         _isTransferActive.value = false
+        TransferForegroundService.stop(getApplication())
         _transferFiles.update { list ->
             list.map {
                 if (it.status == TransferStatus.TRANSFERRING || it.status == TransferStatus.PENDING) {
@@ -514,11 +565,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onAppForegrounded() {
+        isAppInBackground = false
         wifiDirectManager.ensureRegistered()
     }
 
     fun onAppBackgrounded() {
+        isAppInBackground = true
+        if (_isTransferActive.value) {
+            // Keep active file transfer running in background via TransferForegroundService
+            return
+        }
+        TransferForegroundService.stop(getApplication())
         resetToHome()
+        wifiDirectManager.unregister()
+    }
+
+    private fun cleanupIdleBackgroundSession() {
+        TransferForegroundService.stop(getApplication())
+        connectTimeoutJob?.cancel()
+        stopDiscoveryLoop()
+        wifiDirectManager.stopDiscovery()
+        wifiDirectManager.disconnect()
         wifiDirectManager.unregister()
     }
 
@@ -543,6 +610,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        TransferForegroundService.stop(getApplication())
         stopActiveSession()
         wifiDirectManager.unregister()
     }
