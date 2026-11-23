@@ -1,12 +1,19 @@
 <div align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Mini Share app icon" width="180" />
+  <table style="width:100%; border:0; border-radius:16px; background:linear-gradient(135deg, #6a5af9 0%, #00c2ff 100%);">
+    <tr>
+      <td align="center" style="border:0; padding:24px 16px;">
+        <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Mini Share app icon" width="96" height="96" />
+      </td>
+      <td align="left" style="border:0; padding:24px 16px; color:#ffffff;">
+        <h1 style="color:#ffffff; margin:0;">Mini Share</h1>
+        <p style="margin:8px 0 0;"><strong>Android</strong> · Kotlin</p>
+      </td>
+    </tr>
+  </table>
 </div>
-
-<h1 align="center">Mini Share</h1>
 
 <p align="center">
   <strong>Developer:</strong> Vilson Sonkar<br />
-  <strong>Version:</strong> 1.0 (Build 1)<br />
   <strong>Platform:</strong> Android<br />
   <strong>Language:</strong> Kotlin
 </p>
@@ -70,7 +77,7 @@ app/src/main/java/com/example/
 
 ## Build Configuration
 
-The Android app uses a minimum SDK of 28, a target SDK of 36, version code `1`, and version name `1.0`. See `app/build.gradle.kts` for the complete Android build and dependency configuration.
+The Android app uses a minimum SDK of 28 and a target SDK of 36. See `app/build.gradle.kts` for the complete Android build and dependency configuration.
 
 ## License
 
