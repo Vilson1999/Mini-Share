@@ -6,212 +6,45 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
+    <!-- A clean pair of phones with contrasting screens for peer-to-peer sharing. -->
     <group
         android:pivotX="54"
         android:pivotY="54"
         android:scaleX="1.08"
-        android:scaleY="1.08"
-        android:translateY="-1.5">
+        android:scaleY="1.08">
 
-    <!-- Left Blue Smartphone (tilted -10 deg) -->
-    <group
-        android:pivotX="40.5"
-        android:pivotY="44.5"
-        android:rotation="-10">
+        <!-- Blue phone -->
+        <group android:pivotX="39" android:pivotY="45" android:rotation="-9">
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M31,26 L47,26 A4,4 0 0,1 51,30 L51,61 A4,4 0 0,1 47,65 L31,65 A4,4 0 0,1 27,61 L27,30 A4,4 0 0,1 31,26 Z" />
+            <path
+                android:fillColor="#1D4ED8"
+                android:pathData="M31,32 L47,32 L47,56 L31,56 Z" />
+            <path
+                android:fillColor="#BFDBFE"
+                android:pathData="M34,59 A1.5,1.5 0 1,0 34,62 A1.5,1.5 0 1,0 34,59 Z" />
+        </group>
 
-        <!-- Rainbow outer rim -->
-        <path android:pathData="M35,31.5 L46,31.5 A3.5,3.5 0 0,1 49.5,35 L49.5,54 A3.5,3.5 0 0,1 46,57.5 L35,57.5 A3.5,3.5 0 0,1 31.5,54 L31.5,35 A3.5,3.5 0 0,1 35,31.5 Z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:endX="49.5"
-                    android:endY="57.5"
-                    android:startX="31.5"
-                    android:startY="31.5"
-                    android:type="linear">
-                    <item
-                        android:color="#2563EB"
-                        android:offset="0" />
-                    <item
-                        android:color="#EF4444"
-                        android:offset="0.33" />
-                    <item
-                        android:color="#FACC15"
-                        android:offset="0.67" />
-                    <item
-                        android:color="#10B981"
-                        android:offset="1" />
-                </gradient>
-            </aapt:attr>
-        </path>
+        <!-- Teal phone -->
+        <group android:pivotX="69" android:pivotY="45" android:rotation="9">
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M61,26 L77,26 A4,4 0 0,1 81,30 L81,61 A4,4 0 0,1 77,65 L61,65 A4,4 0 0,1 57,61 L57,30 A4,4 0 0,1 61,26 Z" />
+            <path
+                android:fillColor="#0F766E"
+                android:pathData="M61,32 L77,32 L77,56 L61,56 Z" />
+            <path
+                android:fillColor="#99F6E4"
+                android:pathData="M64,59 A1.5,1.5 0 1,0 64,62 A1.5,1.5 0 1,0 64,59 Z" />
+        </group>
 
-        <!-- Deep blue phone body -->
-        <path android:pathData="M35.4,32.9 L45.6,32.9 A2.5,2.5 0 0,1 48.1,35.4 L48.1,53.6 A2.5,2.5 0 0,1 45.6,56.1 L35.4,56.1 A2.5,2.5 0 0,1 32.9,53.6 L32.9,35.4 A2.5,2.5 0 0,1 35.4,32.9 Z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:endX="48.1"
-                    android:endY="56.1"
-                    android:startX="32.9"
-                    android:startY="32.9"
-                    android:type="linear">
-                    <item
-                        android:color="#1E40AF"
-                        android:offset="0" />
-                    <item
-                        android:color="#172554"
-                        android:offset="1" />
-                </gradient>
-            </aapt:attr>
-        </path>
-
-        <!-- Glossy blue screen -->
-        <path android:pathData="M35.6,36.2 L45.4,36.2 A1.1,1.1 0 0,1 46.5,37.3 L46.5,50.7 A1.1,1.1 0 0,1 45.4,51.8 L35.6,51.8 A1.1,1.1 0 0,1 34.5,50.7 L34.5,37.3 A1.1,1.1 0 0,1 35.6,36.2 Z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:endX="46.5"
-                    android:endY="51.8"
-                    android:startX="34.5"
-                    android:startY="36.2"
-                    android:type="linear">
-                    <item
-                        android:color="#3B82F6"
-                        android:offset="0" />
-                    <item
-                        android:color="#1D4ED8"
-                        android:offset="0.55" />
-                    <item
-                        android:color="#1E3A8A"
-                        android:offset="1" />
-                </gradient>
-            </aapt:attr>
-        </path>
-
-        <!-- Screen diagonal shine -->
+        <!-- Two-way transfer arrows -->
         <path
-            android:fillColor="#2EFFFFFF"
-            android:pathData="M34.5,37.3 A1.1,1.1 0 0,1 35.6,36.2 L45.4,36.2 A1.1,1.1 0 0,1 46.5,37.3 L46.5,41.8 L34.5,48.2 Z" />
-
-        <!-- Speaker slot -->
+            android:fillColor="#FFFFFF"
+            android:pathData="M35,72 L70,72 L65,67 L69,63 L81,75 L69,87 L65,83 L70,78 L35,78 Z" />
         <path
-            android:fillColor="#0F172A"
-            android:pathData="M38.7,34.2 L42.3,34.2 A0.45,0.45 0 0,1 42.3,35.1 L38.7,35.1 A0.45,0.45 0 0,1 38.7,34.2 Z" />
-
-        <!-- Home button -->
-        <path
-            android:fillColor="#0F172A"
-            android:pathData="M40.5,52.7 A1.25,1.25 0 1,0 40.5,55.2 A1.25,1.25 0 1,0 40.5,52.7 Z" />
-    </group>
-
-    <!-- Right Green Smartphone (tilted +10 deg) -->
-    <group
-        android:pivotX="67.5"
-        android:pivotY="44.5"
-        android:rotation="10">
-
-        <!-- Rainbow outer rim -->
-        <path android:pathData="M62,31.5 L73,31.5 A3.5,3.5 0 0,1 76.5,35 L76.5,54 A3.5,3.5 0 0,1 73,57.5 L62,57.5 A3.5,3.5 0 0,1 58.5,54 L58.5,35 A3.5,3.5 0 0,1 62,31.5 Z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:endX="76.5"
-                    android:endY="57.5"
-                    android:startX="58.5"
-                    android:startY="31.5"
-                    android:type="linear">
-                    <item
-                        android:color="#EF4444"
-                        android:offset="0" />
-                    <item
-                        android:color="#FACC15"
-                        android:offset="0.33" />
-                    <item
-                        android:color="#10B981"
-                        android:offset="0.67" />
-                    <item
-                        android:color="#2563EB"
-                        android:offset="1" />
-                </gradient>
-            </aapt:attr>
-        </path>
-
-        <!-- Deep emerald phone body -->
-        <path android:pathData="M62.4,32.9 L72.6,32.9 A2.5,2.5 0 0,1 75.1,35.4 L75.1,53.6 A2.5,2.5 0 0,1 72.6,56.1 L62.4,56.1 A2.5,2.5 0 0,1 59.9,53.6 L59.9,35.4 A2.5,2.5 0 0,1 62.4,32.9 Z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:endX="75.1"
-                    android:endY="56.1"
-                    android:startX="59.9"
-                    android:startY="32.9"
-                    android:type="linear">
-                    <item
-                        android:color="#059669"
-                        android:offset="0" />
-                    <item
-                        android:color="#064E3B"
-                        android:offset="1" />
-                </gradient>
-            </aapt:attr>
-        </path>
-
-        <!-- Glossy green screen -->
-        <path android:pathData="M62.6,36.2 L72.4,36.2 A1.1,1.1 0 0,1 73.5,37.3 L73.5,50.7 A1.1,1.1 0 0,1 72.4,51.8 L62.6,51.8 A1.1,1.1 0 0,1 61.5,50.7 L61.5,37.3 A1.1,1.1 0 0,1 62.6,36.2 Z">
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:endX="73.5"
-                    android:endY="51.8"
-                    android:startX="61.5"
-                    android:startY="36.2"
-                    android:type="linear">
-                    <item
-                        android:color="#34D399"
-                        android:offset="0" />
-                    <item
-                        android:color="#10B981"
-                        android:offset="0.55" />
-                    <item
-                        android:color="#047857"
-                        android:offset="1" />
-                </gradient>
-            </aapt:attr>
-        </path>
-
-        <!-- Screen diagonal shine -->
-        <path
-            android:fillColor="#2EFFFFFF"
-            android:pathData="M61.5,37.3 A1.1,1.1 0 0,1 62.6,36.2 L72.4,36.2 A1.1,1.1 0 0,1 73.5,37.3 L73.5,41.8 L61.5,48.2 Z" />
-
-        <!-- Speaker slot -->
-        <path
-            android:fillColor="#022C22"
-            android:pathData="M65.7,34.2 L69.3,34.2 A0.45,0.45 0 0,1 69.3,35.1 L65.7,35.1 A0.45,0.45 0 0,1 65.7,34.2 Z" />
-
-        <!-- Home button -->
-        <path
-            android:fillColor="#022C22"
-            android:pathData="M67.5,52.7 A1.25,1.25 0 1,0 67.5,55.2 A1.25,1.25 0 1,0 67.5,52.7 Z" />
-    </group>
-
-    <!-- Bottom Curved Double-Headed Crimson Smile Arrow -->
-    <path
-        android:pathData="M27.5,60.5 L35.5,63.5 L33.5,65.0 C42.0,74.5 66.0,74.5 74.5,65.0 L72.5,63.5 L80.5,60.5 L78.5,69.2 L76.8,67.8 C67.0,80.5 41.0,80.5 31.2,67.8 L29.5,69.2 Z"
-        android:strokeColor="#2A0404"
-        android:strokeLineJoin="round"
-        android:strokeWidth="0.7">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:centerX="54"
-                android:centerY="76"
-                android:gradientRadius="28"
-                android:type="radial">
-                <item
-                    android:color="#EF4444"
-                    android:offset="0" />
-                <item
-                    android:color="#B91C1C"
-                    android:offset="0.55" />
-                <item
-                    android:color="#2E0505"
-                    android:offset="1" />
-            </gradient>
-        </aapt:attr>
-    </path>
+            android:fillColor="#A5F3FC"
+            android:pathData="M73,84 L38,84 L43,89 L39,93 L27,81 L39,69 L43,73 L38,78 L73,78 Z" />
     </group>
 </vector>

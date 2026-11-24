@@ -1,11 +1,9 @@
 <div align="center">
-  <table style="width:100%; border:0; border-radius:16px; background:linear-gradient(135deg, #6a5af9 0%, #00c2ff 100%);">
+  <table style="width:100%; border:0; border-radius:20px; background:linear-gradient(135deg, #172554 0%, #4f46e5 52%, #0891b2 100%);">
     <tr>
-      <td align="center" style="border:0; padding:24px 16px;">
+      <td align="center" style="border:0; padding:32px 16px; color:#ffffff;">
         <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Mini Share app icon" width="96" height="96" />
-      </td>
-      <td align="left" style="border:0; padding:24px 16px; color:#ffffff;">
-        <h1 style="color:#ffffff; margin:0;">Mini Share</h1>
+        <h1 style="color:#ffffff; margin:12px 0 0;">Mini Share</h1>
         <p style="margin:8px 0 0;"><strong>Android</strong> · Kotlin</p>
       </td>
     </tr>
@@ -39,11 +37,19 @@ Exchange files directly between connected devices instead of uploading them to a
 
 ## Screenshots
 
-<p align="center">
-  <img src="public/assets/aistudio/screenshot-home.svg" alt="Mini Share home screen with Send and Receive options" width="260" />
-  <img src="public/assets/aistudio/screenshot-searching.svg" alt="Mini Share searching screen" width="260" />
-  <img src="public/assets/aistudio/screenshot-receive.svg" alt="Mini Share receive screen" width="260" />
-</p>
+<table>
+  <tr>
+    <td><img src="public/assets/aistudio/Screenshot_20261113-092221_4c35ff80.png" alt="Mini Share screenshot 1" width="120" /></td>
+    <td><img src="public/assets/aistudio/Screenshot_20261113-092234_f7fdad1b.png" alt="Mini Share screenshot 2" width="120" /></td>
+    <td><img src="public/assets/aistudio/Screenshot_20261115-220244_65ec2d17.png" alt="Mini Share screenshot 3" width="120" /></td>
+    <td><img src="public/assets/aistudio/Screenshot_20261122-210849_edb7dd6c.png" alt="Mini Share screenshot 4" width="120" /></td>
+    <td><img src="public/assets/aistudio/Screenshot_20261122-211936_2b4c466a.png" alt="Mini Share screenshot 5" width="120" /></td>
+    <td><img src="public/assets/aistudio/Screenshot_20261122-211949_21eb1aad.png" alt="Mini Share screenshot 6" width="120" /></td>
+    <td><img src="public/assets/aistudio/screenshot-home.svg" alt="Mini Share home screen with Send and Receive options" width="120" /></td>
+    <td><img src="public/assets/aistudio/screenshot-searching.svg" alt="Mini Share searching screen" width="120" /></td>
+    <td><img src="public/assets/aistudio/screenshot-receive.svg" alt="Mini Share receive screen" width="120" /></td>
+  </tr>
+</table>
 
 ## Technology
 
@@ -54,7 +60,7 @@ Exchange files directly between connected devices instead of uploading them to a
 - **Minimum Android version:** Android 9 (API 28)
 - **Target Android version:** Android 13+ build target (API 36)
 - **Package:** `com.minishare.vilson`
-- **App icon:** Android launcher icon from `mipmap-xxxhdpi/ic_launcher.png`
+- **App icon:** Custom adaptive launcher icon with a two-device sharing mark
 
 ## Getting Started
 
