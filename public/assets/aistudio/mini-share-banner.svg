@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="220" viewBox="0 0 960 220">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#172554"/>
+      <stop offset="0.52" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#0891b2"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="220" rx="28" fill="url(#bg)"/>
+
+  <!-- Launcher icon -->
+  <g transform="translate(68 38)">
+    <circle cx="72" cy="72" r="72" fill="#dbeafe"/>
+    <g transform="rotate(-9 72 72)">
+      <rect x="31" y="24" rx="10" ry="10" width="48" height="96" fill="#ffffff"/>
+      <rect x="37" y="34" width="36" height="72" rx="3" fill="#1d4ed8"/>
+      <circle cx="55" cy="112" r="4" fill="#bfdbfe"/>
+    </g>
+    <g transform="rotate(9 72 72) translate(32 0)">
+      <rect x="31" y="24" rx="10" ry="10" width="48" height="96" fill="#ffffff"/>
+      <rect x="37" y="34" width="36" height="72" rx="3" fill="#0f766e"/>
+      <circle cx="55" cy="112" r="4" fill="#99f6e4"/>
+    </g>
+    <path d="M28 134H116L101 119L110 110L138 138L110 166L101 157L116 142H28Z" fill="#ffffff"/>
+  </g>
+
+  <!-- App name -->
+  <text x="238" y="132" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="74" font-weight="700">Mini Share</text>
+</svg>

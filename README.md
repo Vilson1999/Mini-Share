@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="public/assets/aistudio/mini-share-banner.svg" alt="Mini Share app icon and name" width="960" />
+</div>
+
 <p align="center">Ultra-light, offline peer-to-peer file sharing over Wi-Fi Direct and Bluetooth discovery.</p>
 
 ## App Details
