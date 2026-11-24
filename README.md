@@ -21,12 +21,6 @@ Exchange files directly between connected devices instead of uploading them to a
 
 <table>
   <tr>
-    <td><img src="public/assets/aistudio/Screenshot_20261113-092221_4c35ff80.png" alt="Mini Share screenshot 1" width="120" /></td>
-    <td><img src="public/assets/aistudio/Screenshot_20261113-092234_f7fdad1b.png" alt="Mini Share screenshot 2" width="120" /></td>
-    <td><img src="public/assets/aistudio/Screenshot_20261115-220244_65ec2d17.png" alt="Mini Share screenshot 3" width="120" /></td>
-    <td><img src="public/assets/aistudio/Screenshot_20261122-210849_edb7dd6c.png" alt="Mini Share screenshot 4" width="120" /></td>
-    <td><img src="public/assets/aistudio/Screenshot_20261122-211936_2b4c466a.png" alt="Mini Share screenshot 5" width="120" /></td>
-    <td><img src="public/assets/aistudio/Screenshot_20261122-211949_21eb1aad.png" alt="Mini Share screenshot 6" width="120" /></td>
     <td><img src="public/assets/aistudio/screenshot-home.svg" alt="Mini Share home screen with Send and Receive options" width="120" /></td>
     <td><img src="public/assets/aistudio/screenshot-searching.svg" alt="Mini Share searching screen" width="120" /></td>
     <td><img src="public/assets/aistudio/screenshot-receive.svg" alt="Mini Share receive screen" width="120" /></td>
