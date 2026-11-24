@@ -1,21 +1,3 @@
-<div align="center">
-  <table style="width:100%; border:0; border-radius:20px; background:linear-gradient(135deg, #172554 0%, #4f46e5 52%, #0891b2 100%);">
-    <tr>
-      <td align="center" style="border:0; padding:32px 16px; color:#ffffff;">
-        <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Mini Share app icon" width="96" height="96" />
-        <h1 style="color:#ffffff; margin:12px 0 0;">Mini Share</h1>
-        <p style="margin:8px 0 0;"><strong>Android</strong> · Kotlin</p>
-      </td>
-    </tr>
-  </table>
-</div>
-
-<p align="center">
-  <strong>Developer:</strong> Vilson Sonkar<br />
-  <strong>Platform:</strong> Android<br />
-  <strong>Language:</strong> Kotlin
-</p>
-
 <p align="center">Ultra-light, offline peer-to-peer file sharing over Wi-Fi Direct and Bluetooth discovery.</p>
 
 ## App Details
