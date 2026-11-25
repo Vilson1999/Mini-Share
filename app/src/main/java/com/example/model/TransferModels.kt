@@ -84,3 +84,9 @@ fun formatSeconds(seconds: Long): String {
         String.format(Locale.US, "%02d:%02d", mins, secs)
     }
 }
+
+fun String?.toValidDeviceName(): String? {
+    val trimmed = this?.trim() ?: return null
+    return trimmed.takeIf { it.isNotEmpty() && !it.equals("unknown", ignoreCase = true) }
+}
+

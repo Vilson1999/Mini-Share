@@ -122,6 +122,7 @@ android {
         "META-INF/maven/**",
         "META-INF/proguard/*",
         "META-INF/com.android.tools/**",
+        "META-INF/services/androidx.startup.Initializer",
         "kotlin/reflect/**",
         "**/*.kotlin_builtins",
         "**/*.kotlin_metadata",

@@ -18,14 +18,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -53,8 +48,6 @@ import com.example.ui.theme.ElectricBlue
 @Composable
 fun HomeScreen(
     userName: String,
-    runInBackground: Boolean,
-    onToggleRunInBackground: (Boolean) -> Unit,
     onSendClick: () -> Unit,
     onReceiveClick: () -> Unit,
     onShareApkClick: () -> Unit,
@@ -204,108 +197,12 @@ fun HomeScreen(
             }
         }
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Row(
-                modifier = Modifier
-                    .widthIn(max = 420.dp)
-                    .fillMaxWidth()
-                    .heightIn(min = 52.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(
-                        if (runInBackground) colors.primary.copy(alpha = 0.12f)
-                        else colors.surfaceVariant
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (runInBackground) colors.primary.copy(alpha = 0.45f) else colors.outline,
-                        shape = RoundedCornerShape(18.dp)
-                    )
-                    .toggleable(
-                        value = runInBackground,
-                        role = Role.Switch,
-                        onValueChange = onToggleRunInBackground
-                    )
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .testTag("run_in_background_toggle"),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (runInBackground) colors.primary.copy(alpha = 0.18f)
-                                else colors.background
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = if (runInBackground) colors.primary.copy(alpha = 0.4f) else colors.outline,
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = AppIcons.BackgroundSync,
-                            contentDescription = null,
-                            tint = if (runInBackground) colors.primary else colors.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column {
-                        Text(
-                            text = stringResource(R.string.run_in_background),
-                            color = colors.onSurface,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = stringResource(
-                                if (runInBackground) R.string.run_in_background_on
-                                else R.string.run_in_background_off
-                            ),
-                            color = if (runInBackground) colors.primary else colors.onSurfaceVariant,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Switch(
-                    checked = runInBackground,
-                    onCheckedChange = null,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = colors.onPrimary,
-                        checkedTrackColor = colors.primary,
-                        uncheckedThumbColor = colors.onSurfaceVariant,
-                        uncheckedTrackColor = colors.background,
-                        uncheckedBorderColor = colors.outline
-                    ),
-                    modifier = Modifier.testTag("run_in_background_switch")
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
             Text(
                 text = stringResource(R.string.developer_name),
                 color = colors.onSurfaceVariant.copy(alpha = 0.82f),

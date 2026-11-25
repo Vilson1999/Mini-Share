@@ -46,6 +46,7 @@ import com.example.model.TransferStats
 import com.example.model.TransferStatus
 import com.example.ui.components.AppIcons
 import com.example.ui.components.AppTopBar
+import com.example.ui.components.CircleIconBadge
 import com.example.ui.components.getFileIcon
 
 @Composable
@@ -316,26 +317,16 @@ private fun TransferFileItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Icon
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(statusColor.copy(alpha = 0.15f))
-                .border(1.dp, statusColor.copy(alpha = 0.4f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = when (file.status) {
-                    TransferStatus.COMPLETED -> AppIcons.Check
-                    TransferStatus.CANCELLED -> AppIcons.Cancel
-                    else -> fileIcon
-                },
-                contentDescription = null,
-                tint = statusColor,
-                modifier = Modifier.size(20.dp)
-            )
-        }
+        CircleIconBadge(
+            icon = when (file.status) {
+                TransferStatus.COMPLETED -> AppIcons.Check
+                TransferStatus.CANCELLED -> AppIcons.Cancel
+                else -> fileIcon
+            },
+            accentColor = statusColor,
+            badgeSize = 42.dp,
+            iconSize = 20.dp
+        )
 
         Spacer(modifier = Modifier.width(12.dp))
 

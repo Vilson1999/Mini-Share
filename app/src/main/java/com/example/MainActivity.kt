@@ -549,10 +549,6 @@ fun MainAppContent(
                 AppScreen.HOME -> {
                     HomeScreen(
                         userName = userName,
-                        runInBackground = runInBackground,
-                        onToggleRunInBackground = { enabled ->
-                            viewModel.setRunInBackground(enabled)
-                        },
                         onSendClick = {
                             requestActionWithPermissionsAndSettings {
                                 awaitingExternalModal = true
@@ -638,6 +634,10 @@ fun MainAppContent(
                     SettingsScreen(
                         storageDisplayName = storageDisplayName,
                         hasCustomStorage = storageTreeUri != null,
+                        runInBackground = runInBackground,
+                        onToggleRunInBackground = { enabled ->
+                            viewModel.setRunInBackground(enabled)
+                        },
                         onSelectStorageClick = {
                             awaitingExternalModal = true
                             storagePickerLauncher.launch(null)

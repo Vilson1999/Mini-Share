@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -185,3 +186,35 @@ fun getFileIcon(mimeType: String, fileName: String): ImageVector {
         else -> AppIcons.InsertDriveFile
     }
 }
+
+@Composable
+fun CircleIconBadge(
+    icon: ImageVector,
+    accentColor: Color,
+    isActive: Boolean = true,
+    badgeSize: androidx.compose.ui.unit.Dp = 40.dp,
+    iconSize: androidx.compose.ui.unit.Dp = 20.dp
+) {
+    val colors = MaterialTheme.colorScheme
+    val tint = if (isActive) accentColor else colors.onSurfaceVariant
+    Box(
+        modifier = Modifier
+            .size(badgeSize)
+            .clip(CircleShape)
+            .background(if (isActive) accentColor.copy(alpha = 0.14f) else colors.background)
+            .border(
+                width = 1.dp,
+                color = if (isActive) accentColor.copy(alpha = 0.38f) else colors.outline,
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(iconSize)
+        )
+    }
+}
+

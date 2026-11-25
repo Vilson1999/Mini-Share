@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,8 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.FileItem
 import com.example.model.formatBytes
+import com.example.model.toValidDeviceName
 import com.example.ui.components.AppIcons
 import com.example.ui.components.AppTopBar
+import com.example.ui.components.CircleIconBadge
 import com.example.ui.components.RadarAnimation
 
 @Composable
@@ -175,30 +176,18 @@ private fun DeviceItemCard(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(colors.primary.copy(alpha = 0.15f))
-                    .border(1.dp, colors.primary.copy(alpha = 0.4f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = AppIcons.Devices,
-                    contentDescription = null,
-                    tint = colors.primary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+            CircleIconBadge(
+                icon = AppIcons.Devices,
+                accentColor = colors.primary,
+                badgeSize = 44.dp,
+                iconSize = 22.dp
+            )
 
             Spacer(modifier = Modifier.width(14.dp))
 
             Column {
                 Text(
-                    text = device.deviceName
-                        ?.trim()
-                        ?.takeIf { it.isNotEmpty() && !it.equals("unknown", ignoreCase = true) }
-                        ?: "Android Device",
+                    text = device.deviceName.toValidDeviceName() ?: "Android Device",
                     color = colors.onSurface,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,

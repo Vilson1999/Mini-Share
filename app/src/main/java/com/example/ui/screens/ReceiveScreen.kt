@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.model.toValidDeviceName
 import com.example.ui.components.AppIcons
 import com.example.ui.components.AppTopBar
 import com.example.ui.components.RadarAnimation
@@ -39,12 +40,8 @@ fun ReceiveScreen(
     onBackClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
-    val displayDeviceName = userName
-        .trim()
-        .takeIf { it.isNotEmpty() && !it.equals("unknown", ignoreCase = true) }
-        ?: thisDevice?.deviceName
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() && !it.equals("unknown", ignoreCase = true) }
+    val displayDeviceName = userName.toValidDeviceName()
+        ?: thisDevice?.deviceName.toValidDeviceName()
         ?: "Receiver"
 
     Column(

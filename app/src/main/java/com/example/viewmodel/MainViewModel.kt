@@ -18,6 +18,7 @@ import com.example.model.FileItem
 import com.example.model.TransferDirection
 import com.example.model.TransferStats
 import com.example.model.TransferStatus
+import com.example.model.toValidDeviceName
 import com.example.p2p.BluetoothDiscoveryHelper
 import com.example.p2p.WifiDirectManager
 import com.example.transfer.FileTransferEngine
@@ -70,6 +71,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var transferJob: Job? = null
     private var discoveryJob: Job? = null
     private var connectTimeoutJob: Job? = null
+    private var backgroundTimeoutJob: Job? = null
     @Volatile
     private var isAppInBackground = false
 
@@ -86,13 +88,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _storageDisplayName = MutableStateFlow(formatTreeUriDisplayName(_storageTreeUri.value))
     val storageDisplayName: StateFlow<String> = _storageDisplayName.asStateFlow()
 
-    private val _runInBackground = MutableStateFlow(prefs.getBoolean(KEY_RUN_IN_BACKGROUND, false))
+    private val _runInBackground = MutableStateFlow(prefs.getBoolean(KEY_RUN_IN_BACKGROUND, true))
     val runInBackground: StateFlow<Boolean> = _runInBackground.asStateFlow()
-
-    private fun isValidDisplayName(name: String?): Boolean {
-        val trimmed = name?.trim() ?: return false
-        return trimmed.isNotEmpty() && !trimmed.equals("unknown", ignoreCase = true)
-    }
 
     private fun resolveDefaultDeviceName(context: Context): String {
         val systemDeviceName = try {
@@ -104,7 +101,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             systemDeviceName,
             wifiDirectManager.thisDevice.value?.deviceName,
             android.os.Build.MODEL
-        ).firstOrNull { isValidDisplayName(it) }?.trim()?.take(MAX_USER_NAME_LENGTH)
+        ).firstNotNullOfOrNull { it.toValidDeviceName() }?.take(MAX_USER_NAME_LENGTH)
             ?: DEFAULT_USER_NAME
     }
 
@@ -136,9 +133,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             wifiDirectManager.thisDevice.collect { device ->
-                val p2pName = device?.deviceName
-                if (_userName.value == DEFAULT_USER_NAME && isValidDisplayName(p2pName)) {
-                    _userName.value = p2pName!!.trim().take(MAX_USER_NAME_LENGTH)
+                val p2pName = device?.deviceName.toValidDeviceName()
+                if (_userName.value == DEFAULT_USER_NAME && p2pName != null) {
+                    _userName.value = p2pName.take(MAX_USER_NAME_LENGTH)
                 }
             }
         }
@@ -173,20 +170,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         viewModelScope.launch {
-            TransferForegroundService.cancelRequests.collect {
-                cancelAllTransfers()
-                if (isAppInBackground && !_runInBackground.value) {
-                    cleanupIdleBackgroundSession()
+            TransferForegroundService.stopRequests.collect { wasTransferring ->
+                if (wasTransferring) {
+                    cancelAllTransfers()
+                    if (isAppInBackground && (!_runInBackground.value || backgroundTimeoutJob?.isActive != true)) {
+                        cleanupIdleBackgroundSession()
+                    }
+                } else {
+                    backgroundTimeoutJob?.cancel()
+                    TransferForegroundService.stop(getApplication())
+                    if (isAppInBackground) {
+                        resetToHome()
+                        wifiDirectManager.unregister()
+                    }
                 }
             }
-        }
-        viewModelScope.launch {
-            TransferForegroundService.turnOffRequests.collect {
-                setRunInBackground(false)
-            }
-        }
-        if (_runInBackground.value) {
-            TransferForegroundService.startBackgroundIdle(getApplication())
         }
     }
 
@@ -204,7 +202,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 TransferForegroundService.startBackgroundIdle(getApplication())
             }
+            if (isAppInBackground) {
+                scheduleBackgroundTimeout()
+            }
         } else {
+            backgroundTimeoutJob?.cancel()
+            backgroundTimeoutJob = null
             TransferForegroundService.stop(getApplication())
             if (isAppInBackground) {
                 resetToHome()
@@ -217,6 +220,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val DEFAULT_USER_NAME = "Mini Share User"
         private const val MAX_USER_NAME_LENGTH = 32
         private const val KEY_RUN_IN_BACKGROUND = "run_in_background"
+        private const val BACKGROUND_TIMEOUT_MS = 60_000L
     }
 
     fun onFilesPicked(context: Context, uris: List<Uri>) {
@@ -504,18 +508,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 },
                 onComplete = { success, error ->
-                    _isTransferActive.value = false
-                    _isTransferComplete.value = true
-                    TransferForegroundService.endTransfer(
-                        context = getApplication(),
-                        keepBackgroundRunning = _runInBackground.value
-                    )
-                    if (!success && error != null && !error.contains("closed", ignoreCase = true)) {
-                        _transferError.value = error
-                    }
-                    if (isAppInBackground && !_runInBackground.value) {
-                        cleanupIdleBackgroundSession()
-                    }
+                    finishTransferSession(completeState = true, error = if (!success) error else null)
                 }
             )
         }
@@ -552,21 +545,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 },
                 onComplete = { success, error ->
-                    _isTransferActive.value = false
-                    _isTransferComplete.value = success
-                    TransferForegroundService.endTransfer(
-                        context = getApplication(),
-                        keepBackgroundRunning = _runInBackground.value
-                    )
-                    if (!success && error != null && !error.contains("closed", ignoreCase = true)) {
-                        _transferError.value = error
-                    }
-                    if (isAppInBackground && !_runInBackground.value) {
-                        cleanupIdleBackgroundSession()
-                    }
+                    finishTransferSession(completeState = success, error = if (!success) error else null)
                 }
             )
         }
+    }
+
+    private fun finishTransferSession(completeState: Boolean, error: String?) {
+        _isTransferActive.value = false
+        _isTransferComplete.value = completeState
+        val keepRunning = shouldKeepBackgroundAlive()
+        TransferForegroundService.endTransfer(
+            context = getApplication(),
+            keepBackgroundRunning = keepRunning
+        )
+        if (error != null && !error.contains("closed", ignoreCase = true)) {
+            _transferError.value = error
+        }
+        if (isAppInBackground && !keepRunning) {
+            cleanupIdleBackgroundSession()
+        }
+    }
+
+    private fun shouldKeepBackgroundAlive(): Boolean {
+        return _runInBackground.value && (!isAppInBackground || backgroundTimeoutJob?.isActive == true)
     }
 
     private fun updateForegroundServiceProgress(
@@ -605,7 +607,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _isTransferActive.value = false
         TransferForegroundService.endTransfer(
             context = getApplication(),
-            keepBackgroundRunning = _runInBackground.value
+            keepBackgroundRunning = shouldKeepBackgroundAlive()
         )
         _transferFiles.update { list ->
             list.map {
@@ -618,6 +620,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onAppForegrounded() {
         isAppInBackground = false
+        backgroundTimeoutJob?.cancel()
+        backgroundTimeoutJob = null
         wifiDirectManager.ensureRegistered()
         if (_runInBackground.value && !_isTransferActive.value) {
             TransferForegroundService.startBackgroundIdle(getApplication())
@@ -627,17 +631,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onAppBackgrounded() {
         isAppInBackground = true
         if (_runInBackground.value) {
-            if (!_isTransferActive.value) {
-                TransferForegroundService.startBackgroundIdle(getApplication())
-            }
+            scheduleBackgroundTimeout()
             return
         }
+        backgroundTimeoutJob?.cancel()
+        backgroundTimeoutJob = null
         TransferForegroundService.stop(getApplication())
         resetToHome()
         wifiDirectManager.unregister()
     }
 
+    private fun scheduleBackgroundTimeout() {
+        backgroundTimeoutJob?.cancel()
+        backgroundTimeoutJob = viewModelScope.launch {
+            delay(BACKGROUND_TIMEOUT_MS)
+            if (isAppInBackground && !_isTransferActive.value) {
+                cleanupIdleBackgroundSession()
+                resetToHome()
+            }
+        }
+    }
+
     private fun cleanupIdleBackgroundSession() {
+        backgroundTimeoutJob?.cancel()
+        backgroundTimeoutJob = null
         TransferForegroundService.stop(getApplication())
         connectTimeoutJob?.cancel()
         stopDiscoveryLoop()
