@@ -233,7 +233,8 @@ jobs:
           ARMV7_FILE="release-apks/MiniShare-armv7-armeabi-v7a.apk"
           ARMV8_FILE="release-apks/MiniShare-armv8-arm64-v8a.apk"
 
-          NOTES=$(printf '%s\n' \
+          NOTES_FILE="$(mktemp)"
+          printf '%s\n' \
             "## Mini Share ${TAG}" \
             "" \
             "Ultra-light, offline peer-to-peer file sharing over Wi-Fi Direct and Bluetooth discovery." \
@@ -259,30 +260,82 @@ jobs:
             "- Removed the right-side refresh button on Searching and continuous animations on Home action buttons" \
             "" \
             "### Improved" \
-            "- Kept the display awake while the app is open in the foreground and stopped all discovery/transfer work when backgrounded" \
+            "- Kept the display awake while the app is open in the foreground and added a Settings background toggle with a 1-minute lite background limit" \
             "- Maximum APK compression and shrinking using R8 integrated resource shrinking, Compose trace stripping, and compressed DEX/JNI packaging" \
             "- Separate split release APKs for ARMv7 (\`armeabi-v7a\`) and ARMv8 (\`arm64-v8a\`)" \
-            "- Responsive portrait and landscape layouts using Jetpack Compose and Material 3, saving received files to **Downloads/Mini Share**")
+            "- Responsive portrait and landscape layouts using Jetpack Compose and Material 3, saving received files to **Downloads/Mini Share**" > "$NOTES_FILE"
 
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" \
+          TARGET_ARGS=()
+          if [[ "${{ github.ref }}" != refs/tags/* ]]; then
+            TARGET_ARGS=(--target "${{ github.sha }}")
+          fi
+
+          RELEASE_READY=false
+          CREATED_NEW=false
+          for attempt in 1 2 3 4 5; do
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              RELEASE_READY=true
+              break
+            fi
+
+            LATEST_ARG=(--latest)
+            if [ "$attempt" -ge 4 ]; then
+              LATEST_ARG=()
+            fi
+
+            if gh release create "$TAG" \
+              "${TARGET_ARGS[@]}" \
               --title "Mini Share $TAG" \
-              --latest \
-              --notes "$NOTES" || gh release view "$TAG" >/dev/null 2>&1
+              "${LATEST_ARG[@]}" \
+              --notes-file "$NOTES_FILE"; then
+              RELEASE_READY=true
+              CREATED_NEW=true
+              break
+            fi
+
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              RELEASE_READY=true
+              break
+            fi
+
+            echo "Release creation attempt $attempt failed; retrying in $((attempt * 4))s..."
+            sleep $((attempt * 4))
+          done
+
+          if [ "$RELEASE_READY" != "true" ]; then
+            echo "Failed to create or locate GitHub Release $TAG after retries."
+            rm -f "$NOTES_FILE"
+            exit 1
           fi
 
           for ASSET_PATH in "$ARMV7_FILE" "$ARMV8_FILE"; do
             ASSET_NAME="$(basename "$ASSET_PATH")"
-            gh release delete-asset "$TAG" "$ASSET_NAME" --yes >/dev/null 2>&1 || true
-            gh release upload "$TAG" "$ASSET_PATH" --clobber
+            UPLOAD_OK=false
+            for attempt in 1 2 3 4; do
+              gh release delete-asset "$TAG" "$ASSET_NAME" --yes >/dev/null 2>&1 || true
+              if gh release upload "$TAG" "$ASSET_PATH" --clobber; then
+                UPLOAD_OK=true
+                break
+              fi
+              echo "Upload of $ASSET_NAME attempt $attempt failed; retrying in $((attempt * 3))s..."
+              sleep $((attempt * 3))
+            done
+            if [ "$UPLOAD_OK" != "true" ]; then
+              echo "Failed to upload $ASSET_NAME after retries."
+              rm -f "$NOTES_FILE"
+              exit 1
+            fi
           done
 
-          gh release edit "$TAG" \
-            --title "Mini Share $TAG" \
-            --latest \
-            --notes "$NOTES"
+          if [ "$CREATED_NEW" != "true" ]; then
+            gh release edit "$TAG" \
+              --title "Mini Share $TAG" \
+              --notes-file "$NOTES_FILE" || true
+          fi
+          rm -f "$NOTES_FILE"
 
       - name: Write Build Summary to Job Summary
+        if: always() && steps.apks.outcome == 'success'
         run: |
           TAG="${{ steps.apks.outputs.release_tag }}"
           {
