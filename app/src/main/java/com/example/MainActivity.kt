@@ -317,6 +317,7 @@ fun MainAppContent(
     val storageDisplayName by viewModel.storageDisplayName.collectAsStateWithLifecycle()
     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
     val connectingDeviceAddress by viewModel.connectingDeviceAddress.collectAsStateWithLifecycle()
+    val runInBackground by viewModel.runInBackground.collectAsStateWithLifecycle()
 
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var awaitingExternalModal by remember { mutableStateOf(false) }
@@ -425,8 +426,8 @@ fun MainAppContent(
         awaitingExternalModal = false
     }
 
-    LaunchedEffect(isTransferActive) {
-        if (isTransferActive &&
+    LaunchedEffect(runInBackground) {
+        if (runInBackground &&
             !askedNotificationPermission &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -437,7 +438,7 @@ fun MainAppContent(
         }
     }
 
-    // Run in background only while a file transfer is active; stop everything when idle
+    // Run in background only when the Run in Background toggle is turned on
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -548,6 +549,10 @@ fun MainAppContent(
                 AppScreen.HOME -> {
                     HomeScreen(
                         userName = userName,
+                        runInBackground = runInBackground,
+                        onToggleRunInBackground = { enabled ->
+                            viewModel.setRunInBackground(enabled)
+                        },
                         onSendClick = {
                             requestActionWithPermissionsAndSettings {
                                 awaitingExternalModal = true

@@ -26,7 +26,6 @@ android {
     versionName = resolvedVersionName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    resourceConfigurations += listOf("en")
 
     if (!isSplitApk) {
       ndk {
@@ -92,6 +91,12 @@ android {
   buildFeatures {
     compose = true
     buildConfig = false
+    resValues = false
+    shaders = false
+  }
+  androidResources {
+    localeFilters += listOf("en")
+    ignoreAssetsPattern = "!*.prof:!*.profm:!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"
   }
   packaging {
     dex {
@@ -105,12 +110,22 @@ android {
         "/META-INF/{AL2.0,LGPL2.1}",
         "META-INF/LICENSE*",
         "META-INF/NOTICE*",
+        "META-INF/DEPENDENCIES",
+        "META-INF/README*",
+        "META-INF/CHANGES*",
+        "META-INF/*.txt",
+        "META-INF/*.DSA",
+        "META-INF/*.RSA",
+        "META-INF/*.SF",
         "META-INF/*.kotlin_module",
         "META-INF/*.version",
         "META-INF/maven/**",
         "META-INF/proguard/*",
+        "META-INF/com.android.tools/**",
+        "kotlin/reflect/**",
         "**/*.kotlin_builtins",
         "**/*.kotlin_metadata",
+        "**/*.proto",
         "kotlin-tooling-metadata.json",
         "DebugProbesKt.bin"
       )

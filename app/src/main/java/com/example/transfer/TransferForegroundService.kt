@@ -40,6 +40,13 @@ class TransferForegroundService : Service() {
         when (intent?.action) {
             ACTION_CANCEL -> {
                 _cancelRequests.tryEmit(Unit)
+                if (!shouldStayRunning) {
+                    stopForegroundAndSelf()
+                }
+                return START_NOT_STICKY
+            }
+            ACTION_TURN_OFF -> {
+                _turnOffRequests.tryEmit(Unit)
                 stopForegroundAndSelf()
                 return START_NOT_STICKY
             }
@@ -58,11 +65,20 @@ class TransferForegroundService : Service() {
                     stopForegroundAndSelf()
                     return START_NOT_STICKY
                 }
-                acquireWakeLock()
+                if (currentState.isTransferring) {
+                    acquireWakeLock()
+                } else {
+                    releaseWakeLock()
+                }
                 enterForeground(buildNotificationFromState(currentState))
                 return START_NOT_STICKY
             }
         }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        stopForegroundAndSelf()
+        super.onTaskRemoved(rootIntent)
     }
 
     private fun enterForeground(notification: Notification) {
@@ -75,8 +91,13 @@ class TransferForegroundService : Service() {
         isForegroundActive = true
     }
 
-    private fun updateNotification(state: TransferNotificationState) {
+    private fun updateNotification(state: ForegroundState) {
         if (!shouldStayRunning || !isForegroundActive) return
+        if (state.isTransferring) {
+            acquireWakeLock()
+        } else {
+            releaseWakeLock()
+        }
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         manager.notify(NOTIFICATION_ID, buildNotificationFromState(state))
     }
@@ -139,41 +160,7 @@ class TransferForegroundService : Service() {
         manager.createNotificationChannel(channel)
     }
 
-    private fun buildNotificationFromState(state: TransferNotificationState): Notification {
-        return buildNotification(
-            direction = state.direction,
-            completedCount = state.completedCount,
-            totalCount = state.totalCount,
-            progressPercent = state.progressPercent,
-            speedText = state.speedText
-        )
-    }
-
-    private fun buildNotification(
-        direction: TransferDirection,
-        completedCount: Int,
-        totalCount: Int,
-        progressPercent: Int,
-        speedText: String
-    ): Notification {
-        val title = if (direction == TransferDirection.SEND) {
-            getString(R.string.transfer_sending_title)
-        } else {
-            getString(R.string.transfer_receiving_title)
-        }
-
-        val contentText = buildString {
-            if (totalCount > 0) {
-                append("$completedCount / $totalCount files")
-                append(" • ")
-            }
-            append("$progressPercent%")
-            if (speedText.isNotBlank() && speedText != "0 B/s") {
-                append(" • ")
-                append(speedText)
-            }
-        }
-
+    private fun buildNotificationFromState(state: ForegroundState): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -183,6 +170,49 @@ class TransferForegroundService : Service() {
             openAppIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
+        if (!state.isTransferring) {
+            val turnOffIntent = Intent(this, TransferForegroundService::class.java).apply {
+                action = ACTION_TURN_OFF
+            }
+            val turnOffPendingIntent = PendingIntent.getService(
+                this,
+                2,
+                turnOffIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            return NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_transfer_notification)
+                .setContentTitle(getString(R.string.background_running_title))
+                .setContentText(getString(R.string.background_running_text))
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setSilent(true)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setContentIntent(contentPendingIntent)
+                .addAction(0, getString(R.string.background_turn_off_action), turnOffPendingIntent)
+                .build()
+        }
+
+        val title = if (state.direction == TransferDirection.SEND) {
+            getString(R.string.transfer_sending_title)
+        } else {
+            getString(R.string.transfer_receiving_title)
+        }
+
+        val contentText = buildString {
+            if (state.totalCount > 0) {
+                append("${state.completedCount} / ${state.totalCount} files")
+                append(" • ")
+            }
+            append("${state.progressPercent}%")
+            if (state.speedText.isNotBlank() && state.speedText != "0 B/s") {
+                append(" • ")
+                append(state.speedText)
+            }
+        }
 
         val cancelIntent = Intent(this, TransferForegroundService::class.java).apply {
             action = ACTION_CANCEL
@@ -203,13 +233,18 @@ class TransferForegroundService : Service() {
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setProgress(100, progressPercent.coerceIn(0, 100), totalCount == 0 && progressPercent == 0)
+            .setProgress(
+                100,
+                state.progressPercent.coerceIn(0, 100),
+                state.totalCount == 0 && state.progressPercent == 0
+            )
             .setContentIntent(contentPendingIntent)
             .addAction(0, getString(R.string.transfer_cancel_action), cancelPendingIntent)
             .build()
     }
 
-    private data class TransferNotificationState(
+    private data class ForegroundState(
+        val isTransferring: Boolean = false,
         val direction: TransferDirection = TransferDirection.SEND,
         val completedCount: Int = 0,
         val totalCount: Int = 0,
@@ -223,6 +258,7 @@ class TransferForegroundService : Service() {
         private const val ACTION_START = "com.example.transfer.action.START"
         private const val ACTION_STOP = "com.example.transfer.action.STOP"
         private const val ACTION_CANCEL = "com.example.transfer.action.CANCEL"
+        private const val ACTION_TURN_OFF = "com.example.transfer.action.TURN_OFF"
 
         private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -233,7 +269,7 @@ class TransferForegroundService : Service() {
         private var pendingStartService = false
 
         @Volatile
-        private var currentState = TransferNotificationState()
+        private var currentState = ForegroundState()
 
         @Volatile
         private var activeInstance: TransferForegroundService? = null
@@ -241,16 +277,37 @@ class TransferForegroundService : Service() {
         private val _cancelRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         val cancelRequests = _cancelRequests.asSharedFlow()
 
-        fun start(context: Context, direction: TransferDirection, totalCount: Int) {
-            shouldStayRunning = true
-            pendingStartService = true
-            currentState = TransferNotificationState(
+        private val _turnOffRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+        val turnOffRequests = _turnOffRequests.asSharedFlow()
+
+        fun startBackgroundIdle(context: Context) {
+            val state = ForegroundState(isTransferring = false)
+            startOrUpdate(context, state)
+        }
+
+        fun startTransfer(context: Context, direction: TransferDirection, totalCount: Int) {
+            val state = ForegroundState(
+                isTransferring = true,
                 direction = direction,
                 completedCount = 0,
                 totalCount = totalCount,
                 progressPercent = 0,
                 speedText = ""
             )
+            startOrUpdate(context, state)
+        }
+
+        private fun startOrUpdate(context: Context, state: ForegroundState) {
+            shouldStayRunning = true
+            currentState = state
+            val instance = activeInstance
+            if (instance != null) {
+                mainHandler.post {
+                    activeInstance?.updateNotification(state)
+                }
+                return
+            }
+            pendingStartService = true
             val intent = Intent(context, TransferForegroundService::class.java).apply {
                 action = ACTION_START
             }
@@ -269,7 +326,8 @@ class TransferForegroundService : Service() {
             speedText: String
         ) {
             if (!shouldStayRunning) return
-            val updated = TransferNotificationState(
+            val updated = ForegroundState(
+                isTransferring = true,
                 direction = direction,
                 completedCount = completedCount,
                 totalCount = totalCount,
@@ -278,6 +336,14 @@ class TransferForegroundService : Service() {
             )
             currentState = updated
             activeInstance?.updateNotification(updated)
+        }
+
+        fun endTransfer(context: Context, keepBackgroundRunning: Boolean) {
+            if (keepBackgroundRunning) {
+                startBackgroundIdle(context)
+            } else {
+                stop(context)
+            }
         }
 
         fun stop(context: Context) {

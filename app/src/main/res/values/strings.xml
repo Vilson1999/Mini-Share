@@ -7,8 +7,14 @@
     <string name="choose_folder">Choose Folder</string>
     <string name="reset_default">Default</string>
     <string name="developer_name">Vilson Sonkar</string>
-    <string name="transfer_notification_channel_name">File Transfers</string>
-    <string name="transfer_notification_channel_desc">Shows active background file transfer progress</string>
+    <string name="run_in_background">Run in Background</string>
+    <string name="run_in_background_on">App runs in background</string>
+    <string name="run_in_background_off">App stops when closed to background</string>
+    <string name="transfer_notification_channel_name">Background &amp; Transfers</string>
+    <string name="transfer_notification_channel_desc">Keeps Mini Share and active file transfers running in background</string>
+    <string name="background_running_title">Mini Share</string>
+    <string name="background_running_text">Running in background</string>
+    <string name="background_turn_off_action">Turn Off</string>
     <string name="transfer_sending_title">Sending files</string>
     <string name="transfer_receiving_title">Receiving files</string>
     <string name="transfer_cancel_action">Cancel</string>
