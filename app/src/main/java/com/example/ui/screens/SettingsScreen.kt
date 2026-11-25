@@ -1,14 +1,13 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,20 +23,16 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -62,11 +57,23 @@ fun SettingsScreen(
     onBackClick: () -> Unit
 ) {
     val colors = MaterialTheme.colorScheme
+    val context = LocalContext.current
     val settingsLabel = stringResource(R.string.settings)
-
-    var storageExpanded by rememberSaveable { mutableStateOf(true) }
-    var backgroundExpanded by rememberSaveable { mutableStateOf(true) }
-    var aboutExpanded by rememberSaveable { mutableStateOf(false) }
+    val developerName = stringResource(R.string.developer_name)
+    val appVersion = remember(context) {
+        try {
+            val pm = context.packageManager
+            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(context.packageName, 0)
+            }
+            info.versionName ?: "1.1"
+        } catch (_: Exception) {
+            "1.1"
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -89,24 +96,104 @@ fun SettingsScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Storage Folder
-            SettingsFolder(
-                title = stringResource(R.string.folder_storage),
-                subtitle = if (storageExpanded) {
-                    stringResource(R.string.select_storage_subtitle)
-                } else {
-                    storageDisplayName
-                },
-                expanded = storageExpanded,
-                onToggleExpand = { storageExpanded = !storageExpanded },
-                testTag = "storage_folder_header",
-                leadingBadge = {
+            // 1. Run in Background Toggle (Top)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(colors.surfaceVariant)
+                    .border(1.dp, colors.outline, RoundedCornerShape(20.dp))
+                    .toggleable(
+                        value = runInBackground,
+                        role = Role.Switch,
+                        onValueChange = onToggleRunInBackground
+                    )
+                    .padding(horizontal = 18.dp, vertical = 14.dp)
+                    .testTag("run_in_background_toggle"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircleIconBadge(
+                        icon = AppIcons.BackgroundSync,
+                        accentColor = colors.primary,
+                        isActive = runInBackground
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = stringResource(R.string.run_in_background),
+                            color = colors.onSurface,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = stringResource(
+                                if (runInBackground) R.string.run_in_background_on
+                                else R.string.run_in_background_off
+                            ),
+                            color = if (runInBackground) colors.primary else colors.onSurfaceVariant,
+                            fontSize = 12.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Switch(
+                    checked = runInBackground,
+                    onCheckedChange = null,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = colors.onPrimary,
+                        checkedTrackColor = colors.primary,
+                        uncheckedThumbColor = colors.onSurfaceVariant,
+                        uncheckedTrackColor = colors.background,
+                        uncheckedBorderColor = colors.outline
+                    ),
+                    modifier = Modifier.testTag("run_in_background_switch")
+                )
+            }
+
+            // 2. Select Storage
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(colors.surfaceVariant)
+                    .border(1.dp, colors.outline, RoundedCornerShape(20.dp))
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     CircleIconBadge(
                         icon = AppIcons.Folder,
                         accentColor = colors.primary
                     )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = stringResource(R.string.select_storage),
+                            color = colors.onSurface,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = stringResource(R.string.select_storage_subtitle),
+                            color = colors.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
-            ) {
+
+                Spacer(modifier = Modifier.height(14.dp))
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -186,202 +273,49 @@ fun SettingsScreen(
                 }
             }
 
-            // Background Folder (directly below Storage Location)
-            SettingsFolder(
-                title = stringResource(R.string.folder_background),
-                subtitle = stringResource(
-                    if (runInBackground) R.string.folder_background_on_short
-                    else R.string.folder_background_off_short
-                ),
-                expanded = backgroundExpanded,
-                onToggleExpand = { backgroundExpanded = !backgroundExpanded },
-                testTag = "background_folder_header",
-                leadingBadge = {
-                    CircleIconBadge(
-                        icon = AppIcons.BackgroundSync,
-                        accentColor = colors.primary,
-                        isActive = runInBackground
-                    )
-                }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(colors.background)
-                        .border(1.dp, colors.outline, RoundedCornerShape(14.dp))
-                        .toggleable(
-                            value = runInBackground,
-                            role = Role.Switch,
-                            onValueChange = onToggleRunInBackground
-                        )
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                        .testTag("run_in_background_toggle"),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.run_in_background),
-                            color = colors.onSurface,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = stringResource(
-                                if (runInBackground) R.string.run_in_background_on
-                                else R.string.run_in_background_off
-                            ),
-                            color = if (runInBackground) colors.primary else colors.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Switch(
-                        checked = runInBackground,
-                        onCheckedChange = null,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = colors.onPrimary,
-                            checkedTrackColor = colors.primary,
-                            uncheckedThumbColor = colors.onSurfaceVariant,
-                            uncheckedTrackColor = colors.surfaceVariant,
-                            uncheckedBorderColor = colors.outline
-                        ),
-                        modifier = Modifier.testTag("run_in_background_switch")
-                    )
-                }
-            }
-
-            // App Info Folder (small app details inside folder)
-            SettingsFolder(
-                title = stringResource(R.string.folder_about),
-                subtitle = stringResource(R.string.app_name),
-                expanded = aboutExpanded,
-                onToggleExpand = { aboutExpanded = !aboutExpanded },
-                testTag = "about_folder_header",
-                leadingBadge = {
-                    MiniShareIcon(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(11.dp))
-                    )
-                }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(colors.background)
-                        .border(1.dp, colors.outline, RoundedCornerShape(14.dp))
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.about_mode_label),
-                        color = colors.onSurface,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = stringResource(R.string.developer_name),
-                        color = colors.primary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsFolder(
-    title: String,
-    subtitle: String,
-    expanded: Boolean,
-    onToggleExpand: () -> Unit,
-    testTag: String,
-    leadingBadge: @Composable () -> Unit,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    val colors = MaterialTheme.colorScheme
-    val chevronRotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        label = "folder_chevron"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(colors.surfaceVariant)
-            .border(1.dp, colors.outline, RoundedCornerShape(20.dp))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 64.dp)
-                .clickable(
-                    role = Role.Button,
-                    onClickLabel = title,
-                    onClick = onToggleExpand
-                )
-                .padding(horizontal = 18.dp, vertical = 14.dp)
-                .testTag(testTag),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+            // 3. App Info (Bottom Last: App Icon, App Name, App Version, Developer)
             Row(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(colors.surfaceVariant)
+                    .border(1.dp, colors.outline, RoundedCornerShape(20.dp))
+                    .padding(18.dp)
+                    .testTag("app_info_section"),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                leadingBadge()
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                MiniShareIcon(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = title,
+                        text = stringResource(R.string.app_name),
                         color = colors.onSurface,
-                        fontSize = 15.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = subtitle,
+                        text = stringResource(R.string.app_version_format, appVersion),
                         color = colors.onSurfaceVariant,
                         fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = stringResource(R.string.developer_by_format, developerName),
+                        color = colors.primary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Icon(
-                imageVector = AppIcons.ExpandMore,
-                contentDescription = title,
-                tint = colors.onSurfaceVariant,
-                modifier = Modifier
-                    .size(22.dp)
-                    .rotate(chevronRotation)
-            )
-        }
-
-        AnimatedVisibility(visible = expanded) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 18.dp, end = 18.dp, bottom = 18.dp)
-            ) {
-                content()
             }
         }
     }
