@@ -317,7 +317,6 @@ fun MainAppContent(
     val storageDisplayName by viewModel.storageDisplayName.collectAsStateWithLifecycle()
     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
     val connectingDeviceAddress by viewModel.connectingDeviceAddress.collectAsStateWithLifecycle()
-    val runInBackground by viewModel.runInBackground.collectAsStateWithLifecycle()
 
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var awaitingExternalModal by remember { mutableStateOf(false) }
@@ -426,9 +425,8 @@ fun MainAppContent(
         awaitingExternalModal = false
     }
 
-    LaunchedEffect(runInBackground) {
-        if (runInBackground &&
-            !askedNotificationPermission &&
+    LaunchedEffect(Unit) {
+        if (!askedNotificationPermission &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -438,7 +436,7 @@ fun MainAppContent(
         }
     }
 
-    // Run in background only when the Run in Background toggle is turned on
+    // Run in background only while the foreground service is running
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -634,10 +632,6 @@ fun MainAppContent(
                     SettingsScreen(
                         storageDisplayName = storageDisplayName,
                         hasCustomStorage = storageTreeUri != null,
-                        runInBackground = runInBackground,
-                        onToggleRunInBackground = { enabled ->
-                            viewModel.setRunInBackground(enabled)
-                        },
                         onSelectStorageClick = {
                             awaitingExternalModal = true
                             storagePickerLauncher.launch(null)

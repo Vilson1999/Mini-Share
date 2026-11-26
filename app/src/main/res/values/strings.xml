@@ -7,9 +7,6 @@
     <string name="choose_folder">Choose Folder</string>
     <string name="reset_default">Default</string>
     <string name="developer_name">Vilson Sonkar</string>
-    <string name="run_in_background">Run in Background</string>
-    <string name="run_in_background_on">Stays active up to 1 min in background</string>
-    <string name="run_in_background_off">Stops immediately when minimized</string>
     <string name="transfer_notification_channel_name">Background &amp; Transfers</string>
     <string name="transfer_notification_channel_desc">Lite background service and file transfer status</string>
     <string name="background_running_title">Mini Share</string>

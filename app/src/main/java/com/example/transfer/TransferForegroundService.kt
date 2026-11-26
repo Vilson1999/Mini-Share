@@ -49,19 +49,17 @@ class TransferForegroundService : Service() {
         pendingStartService = false
         when (intent?.action) {
             ACTION_STOP_BY_USER -> {
-                _stopRequests.tryEmit(currentState.isTransferring)
-                if (!shouldStayRunning) {
-                    stopForegroundAndSelf()
-                }
+                if (!isForegroundActive) enterForeground(buildNotification(currentState))
+                stopForegroundAndSelf(notifyClosed = true)
             }
             ACTION_STOP -> {
                 if (!isForegroundActive) enterForeground(buildNotification(currentState))
-                stopForegroundAndSelf()
+                stopForegroundAndSelf(notifyClosed = false)
             }
             else -> {
                 if (!shouldStayRunning) {
                     if (!isForegroundActive) enterForeground(buildNotification(currentState))
-                    stopForegroundAndSelf()
+                    stopForegroundAndSelf(notifyClosed = false)
                 } else {
                     syncWakeLock(currentState.isTransferring)
                     enterForeground(buildNotification(currentState))
@@ -72,7 +70,7 @@ class TransferForegroundService : Service() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        stopForegroundAndSelf()
+        stopForegroundAndSelf(notifyClosed = true)
         super.onTaskRemoved(rootIntent)
     }
 
@@ -91,22 +89,31 @@ class TransferForegroundService : Service() {
         manager.notify(NOTIFICATION_ID, buildNotification(state))
     }
 
-    private fun stopForegroundAndSelf() {
+    private fun stopForegroundAndSelf(notifyClosed: Boolean) {
         shouldStayRunning = false
+        currentState = ForegroundState()
         syncWakeLock(false)
         if (isForegroundActive) {
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             isForegroundActive = false
         }
         (getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager)?.cancel(NOTIFICATION_ID)
+        if (notifyClosed) {
+            _stopRequests.tryEmit(Unit)
+        }
         stopSelf()
     }
 
     override fun onDestroy() {
+        val wasRunning = shouldStayRunning
         if (activeInstance === this) activeInstance = null
+        shouldStayRunning = false
         pendingStartService = false
         isForegroundActive = false
         syncWakeLock(false)
+        if (wasRunning) {
+            _stopRequests.tryEmit(Unit)
+        }
         super.onDestroy()
     }
 
@@ -212,8 +219,10 @@ class TransferForegroundService : Service() {
         @Volatile
         private var activeInstance: TransferForegroundService? = null
 
-        private val _stopRequests = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
+        private val _stopRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         val stopRequests = _stopRequests.asSharedFlow()
+
+        fun isServiceRunning(): Boolean = shouldStayRunning || pendingStartService || activeInstance != null
 
         fun startBackgroundIdle(context: Context) {
             startOrUpdate(context, ForegroundState(isTransferring = false))
@@ -243,6 +252,7 @@ class TransferForegroundService : Service() {
                 ContextCompat.startForegroundService(context, intent)
             } catch (_: Exception) {
                 pendingStartService = false
+                shouldStayRunning = false
             }
         }
 
@@ -275,7 +285,7 @@ class TransferForegroundService : Service() {
             mainHandler.post {
                 val instance = activeInstance
                 if (instance != null) {
-                    instance.stopForegroundAndSelf()
+                    instance.stopForegroundAndSelf(notifyClosed = false)
                 } else if (!pendingStartService) {
                     try {
                         context.stopService(Intent(context, TransferForegroundService::class.java))

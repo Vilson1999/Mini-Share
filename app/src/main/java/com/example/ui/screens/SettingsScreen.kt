@@ -19,13 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -50,8 +47,6 @@ import com.example.ui.components.MiniShareIcon
 fun SettingsScreen(
     storageDisplayName: String,
     hasCustomStorage: Boolean,
-    runInBackground: Boolean,
-    onToggleRunInBackground: (Boolean) -> Unit,
     onSelectStorageClick: () -> Unit,
     onResetStorageClick: () -> Unit,
     onBackClick: () -> Unit
@@ -96,73 +91,7 @@ fun SettingsScreen(
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // 1. Run in Background Toggle (Top)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 64.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(colors.surfaceVariant)
-                    .border(1.dp, colors.outline, RoundedCornerShape(20.dp))
-                    .toggleable(
-                        value = runInBackground,
-                        role = Role.Switch,
-                        onValueChange = onToggleRunInBackground
-                    )
-                    .padding(horizontal = 18.dp, vertical = 14.dp)
-                    .testTag("run_in_background_toggle"),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircleIconBadge(
-                        icon = AppIcons.BackgroundSync,
-                        accentColor = colors.primary,
-                        isActive = runInBackground
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = stringResource(R.string.run_in_background),
-                            color = colors.onSurface,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = stringResource(
-                                if (runInBackground) R.string.run_in_background_on
-                                else R.string.run_in_background_off
-                            ),
-                            color = if (runInBackground) colors.primary else colors.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Switch(
-                    checked = runInBackground,
-                    onCheckedChange = null,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = colors.onPrimary,
-                        checkedTrackColor = colors.primary,
-                        uncheckedThumbColor = colors.onSurfaceVariant,
-                        uncheckedTrackColor = colors.background,
-                        uncheckedBorderColor = colors.outline
-                    ),
-                    modifier = Modifier.testTag("run_in_background_switch")
-                )
-            }
-
-            // 2. Select Storage
+            // 1. Select Storage
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -273,7 +202,7 @@ fun SettingsScreen(
                 }
             }
 
-            // 3. App Info (Bottom Last: App Icon, App Name, App Version, Developer)
+            // 2. App Info (Bottom Last: App Icon, App Name, App Version, Developer)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
