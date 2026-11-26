@@ -1,4 +1,4 @@
-name: Build Mini Share APKs (ARMv7 & ARMv8)
+name: Build Mini Share APKs (ARMv7, ARMv8 & Universal)
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build-apk:
-    name: Build Compressed ARMv7 & ARMv8 APKs
+    name: Build Compressed ARMv7, ARMv8 & Universal APKs
     runs-on: ubuntu-latest
 
     steps:
@@ -180,7 +180,7 @@ jobs:
             echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
           fi
 
-      - name: Build Separate ARMv7 & ARMv8 Release APKs
+      - name: Build Separate ARMv7, ARMv8 & Universal Release APKs
         run: gradle :app:assembleRelease -PsplitApk --no-daemon
 
       - name: Prepare APK Artifacts & Measure Sizes
@@ -189,22 +189,27 @@ jobs:
           mkdir -p "${{ github.workspace }}/release-apks"
           ARMV7_SRC=$(find app/build/outputs/apk/release -name "*armeabi-v7a*.apk" | head -n 1)
           ARMV8_SRC=$(find app/build/outputs/apk/release -name "*arm64-v8a*.apk" | head -n 1)
+          UNIVERSAL_SRC=$(find app/build/outputs/apk/release -name "*universal*.apk" | head -n 1)
 
-          if [ -z "$ARMV7_SRC" ] || [ -z "$ARMV8_SRC" ]; then
-            echo "Failed to locate split APKs in app/build/outputs/apk/release"
+          if [ -z "$ARMV7_SRC" ] || [ -z "$ARMV8_SRC" ] || [ -z "$UNIVERSAL_SRC" ]; then
+            echo "Failed to locate all split/universal APKs in app/build/outputs/apk/release"
             ls -la app/build/outputs/apk/release
             exit 1
           fi
 
           ARMV7_OUT="${{ github.workspace }}/release-apks/MiniShare-armv7-armeabi-v7a.apk"
           ARMV8_OUT="${{ github.workspace }}/release-apks/MiniShare-armv8-arm64-v8a.apk"
+          UNIVERSAL_OUT="${{ github.workspace }}/release-apks/MiniShare-universal.apk"
           cp "$ARMV7_SRC" "$ARMV7_OUT"
           cp "$ARMV8_SRC" "$ARMV8_OUT"
+          cp "$UNIVERSAL_SRC" "$UNIVERSAL_OUT"
 
           ARMV7_SIZE=$(du -h "$ARMV7_OUT" | cut -f1)
           ARMV8_SIZE=$(du -h "$ARMV8_OUT" | cut -f1)
+          UNIVERSAL_SIZE=$(du -h "$UNIVERSAL_OUT" | cut -f1)
           echo "armv7_size=$ARMV7_SIZE" >> "$GITHUB_OUTPUT"
           echo "armv8_size=$ARMV8_SIZE" >> "$GITHUB_OUTPUT"
+          echo "universal_size=$UNIVERSAL_SIZE" >> "$GITHUB_OUTPUT"
 
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             RELEASE_TAG="${{ github.ref_name }}"
@@ -225,6 +230,12 @@ jobs:
           name: MiniShare-armv8-apk
           path: release-apks/MiniShare-armv8-arm64-v8a.apk
 
+      - name: Upload Universal APK Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: MiniShare-universal-apk
+          path: release-apks/MiniShare-universal.apk
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -234,6 +245,7 @@ jobs:
           TAG="${{ steps.apks.outputs.release_tag }}"
           ARMV7_FILE="release-apks/MiniShare-armv7-armeabi-v7a.apk"
           ARMV8_FILE="release-apks/MiniShare-armv8-arm64-v8a.apk"
+          UNIVERSAL_FILE="release-apks/MiniShare-universal.apk"
 
           NOTES_FILE="$(mktemp)"
           printf '%s\n' \
@@ -247,6 +259,7 @@ jobs:
             "- **Android Support:** Android 9+ (minSdk 28) • Target SDK 36" \
             "- **ARMv7 (\`armeabi-v7a\`) APK Size:** ${{ steps.apks.outputs.armv7_size }}" \
             "- **ARMv8 (\`arm64-v8a\`) APK Size:** ${{ steps.apks.outputs.armv8_size }}" \
+            "- **Universal APK Size:** ${{ steps.apks.outputs.universal_size }}" \
             "" \
             "### New Features" \
             "- **Share App (APK):** Added a top-right Share App pill button on Home to share the installed APK via Bluetooth, Quick Share, or the Android system share menu" \
@@ -262,9 +275,9 @@ jobs:
             "- Removed the right-side refresh button on Searching and continuous animations on Home action buttons" \
             "" \
             "### Improved" \
-            "- Kept the display awake while the app is open in the foreground and added a Settings background toggle with a 1-minute lite background limit" \
+            "- Kept the display awake while the app is open in the foreground and tied background execution strictly to the active foreground service lifecycle" \
             "- Maximum APK compression and shrinking using R8 integrated resource shrinking, Compose trace stripping, and compressed DEX/JNI packaging" \
-            "- Separate split release APKs for ARMv7 (\`armeabi-v7a\`) and ARMv8 (\`arm64-v8a\`)" \
+            "- Separate release APKs for ARMv7 (\`armeabi-v7a\`), ARMv8 (\`arm64-v8a\`), and Universal" \
             "- Responsive portrait and landscape layouts using Jetpack Compose and Material 3, saving received files to **Downloads/Mini Share**" > "$NOTES_FILE"
 
           # Ensure the lightweight git tag exists before creating the release (using GITHUB_TOKEN does not re-trigger workflows)
@@ -342,7 +355,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets?per_page=50" > "$EXISTING_ASSETS_JSON" || echo "[]" > "$EXISTING_ASSETS_JSON"
 
-          for ASSET_PATH in "$ARMV7_FILE" "$ARMV8_FILE"; do
+          for ASSET_PATH in "$ARMV7_FILE" "$ARMV8_FILE" "$UNIVERSAL_FILE"; do
             ASSET_NAME="$(basename "$ASSET_PATH")"
             EXISTING_ASSET_ID=$(python3 -c 'import json, sys; data = json.load(open(sys.argv[1])); print(next((a.get("id", "") for a in data if isinstance(data, list) and a.get("name") == sys.argv[2]), ""))' "$EXISTING_ASSETS_JSON" "$ASSET_NAME" 2>/dev/null || true)
             if [ -n "$EXISTING_ASSET_ID" ]; then
@@ -398,6 +411,7 @@ jobs:
             echo "|---|---|---|"
             echo "| ARMv7 (\`armeabi-v7a\`) | \`MiniShare-armv7-armeabi-v7a.apk\` | ${{ steps.apks.outputs.armv7_size }} |"
             echo "| ARMv8 (\`arm64-v8a\`) | \`MiniShare-armv8-arm64-v8a.apk\` | ${{ steps.apks.outputs.armv8_size }} |"
+            echo "| Universal | \`MiniShare-universal.apk\` | ${{ steps.apks.outputs.universal_size }} |"
             echo ""
             echo "### App Details"
             echo "- **Developer:** Vilson Sonkar"
@@ -418,7 +432,7 @@ jobs:
             echo "- Removed Searching refresh button and Home button continuous animations"
             echo ""
             echo "### Improved"
-            echo "- Kept screen awake while foregrounded and prevented background execution when minimized"
-            echo "- Smaller compressed ARMv7 & ARMv8 split APKs via R8 integrated resource shrinking and Compose trace stripping"
+            echo "- Kept screen awake while foregrounded and tied background execution to the foreground service"
+            echo "- Smaller compressed ARMv7, ARMv8, and Universal APKs via R8 integrated resource shrinking and Compose trace stripping"
             echo "- Responsive Jetpack Compose & Material 3 layouts with **Downloads/Mini Share** Scoped Storage output"
           } >> "$GITHUB_STEP_SUMMARY"
