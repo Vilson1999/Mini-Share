@@ -275,13 +275,22 @@ jobs:
             "- Removed the right-side refresh button on Searching and continuous animations on Home action buttons" \
             "" \
             "### Improved" \
+            "- Frosted & liquid glass mobile launcher icon and in-app Kotlin Compose \`MiniShareIcon\`" \
             "- Kept the display awake while the app is open in the foreground and tied background execution strictly to the active foreground service lifecycle" \
             "- Maximum APK compression and shrinking using R8 integrated resource shrinking, Compose trace stripping, and compressed DEX/JNI packaging" \
             "- Separate release APKs for ARMv7 (\`armeabi-v7a\`), ARMv8 (\`arm64-v8a\`), and Universal" \
             "- Responsive portrait and landscape layouts using Jetpack Compose and Material 3, saving received files to **Downloads/Mini Share**" > "$NOTES_FILE"
 
           # Ensure the lightweight git tag exists before creating the release (using GITHUB_TOKEN does not re-trigger workflows)
-          if ! gh api "repos/${REPO}/git/ref/tags/${TAG}" >/dev/null 2>&1; then
+          TAG_CHECK_CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPO}/git/ref/tags/${TAG}")
+          TAG_READY=false
+          if [ "$TAG_CHECK_CODE" = "200" ]; then
+            TAG_READY=true
+          else
             TAG_CODE=$(curl -sS -o /tmp/tag_resp.json -w '%{http_code}' \
               -X POST "https://api.github.com/repos/${REPO}/git/refs" \
               -H "Authorization: Bearer ${GH_TOKEN}" \
@@ -289,31 +298,56 @@ jobs:
               -H "X-GitHub-Api-Version: 2022-11-28" \
               -d "{\"ref\":\"refs/tags/${TAG}\",\"sha\":\"${COMMIT_SHA}\"}")
             echo "Create tag ${TAG} HTTP ${TAG_CODE}"
-            if [ "$TAG_CODE" -ge 400 ] && [ "$TAG_CODE" != "422" ]; then
+            if [ "$TAG_CODE" = "201" ] || [ "$TAG_CODE" = "200" ] || [ "$TAG_CODE" = "422" ]; then
+              TAG_READY=true
+            else
               cat /tmp/tag_resp.json || true
+              echo ""
             fi
           fi
 
           find_release_id() {
             local rel_id=""
-            rel_id=$(gh api "repos/${REPO}/releases/tags/${TAG}" --jq '.id' 2>/dev/null || true)
-            if [ -z "$rel_id" ]; then
-              rel_id=$(gh api "repos/${REPO}/releases?per_page=30" --jq ".[] | select(.tag_name == \"${TAG}\") | .id" 2>/dev/null | head -n 1 || true)
+            local resp_file
+            resp_file="$(mktemp)"
+
+            local code
+            code=$(curl -sS -o "$resp_file" -w '%{http_code}' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" || echo "000")
+            if [ "$code" = "200" ]; then
+              rel_id=$(python3 -c 'import json, sys; d = json.load(open(sys.argv[1])); v = d.get("id"); print(v if isinstance(v, int) else "")' "$resp_file" 2>/dev/null || true)
             fi
-            echo "$rel_id"
+
+            if [ -z "$rel_id" ]; then
+              code=$(curl -sS -o "$resp_file" -w '%{http_code}' \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/${REPO}/releases?per_page=30" || echo "000")
+              if [ "$code" = "200" ]; then
+                rel_id=$(python3 -c 'import json, sys; data = json.load(open(sys.argv[1])); tag = sys.argv[2]; print(next((r["id"] for r in data if isinstance(data, list) and isinstance(r, dict) and r.get("tag_name") == tag and isinstance(r.get("id"), int)), ""))' "$resp_file" "$TAG" 2>/dev/null || true)
+              fi
+            fi
+
+            rm -f "$resp_file"
+            if [[ "$rel_id" =~ ^[0-9]+$ ]]; then
+              echo "$rel_id"
+            fi
           }
 
           RELEASE_ID="$(find_release_id)"
-          CREATED_NEW=false
 
           for attempt in 1 2 3 4; do
-            if [ -n "$RELEASE_ID" ]; then
+            if [[ "$RELEASE_ID" =~ ^[0-9]+$ ]]; then
               break
             fi
 
             PAYLOAD_FILE="$(mktemp)"
-            python3 -c 'import json, sys; tag, sha, np, att, op = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5]; body = open(np, encoding="utf-8").read(); p = {"tag_name": tag, "name": f"Mini Share {tag}", "body": body, "draft": (att == 4), "prerelease": False}; p.update({"target_commitish": sha, "make_latest": "true"} if att <= 2 else {}); json.dump(p, open(op, "w", encoding="utf-8"))' \
-              "$TAG" "$COMMIT_SHA" "$NOTES_FILE" "$attempt" "$PAYLOAD_FILE"
+            python3 -c 'import json, sys; tag, sha, np, att, tag_ready, op = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), (sys.argv[5] == "true"), sys.argv[6]; body = open(np, encoding="utf-8").read(); p = {"tag_name": tag, "name": f"Mini Share {tag}", "body": body, "draft": (att == 4), "prerelease": False}; (p.update({"target_commitish": sha}) if not tag_ready else None); (p.update({"make_latest": "true"}) if att <= 2 else None); json.dump(p, open(op, "w", encoding="utf-8"))' \
+              "$TAG" "$COMMIT_SHA" "$NOTES_FILE" "$attempt" "$TAG_READY" "$PAYLOAD_FILE"
 
             HTTP_CODE=$(curl -sS -o /tmp/release_resp.json -w '%{http_code}' \
               -X POST "https://api.github.com/repos/${REPO}/releases" \
@@ -324,10 +358,12 @@ jobs:
             rm -f "$PAYLOAD_FILE"
 
             if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
-              RELEASE_ID=$(python3 -c 'import json; print(json.load(open("/tmp/release_resp.json")).get("id", ""))' 2>/dev/null || true)
-              CREATED_NEW=true
-              echo "Created release ${TAG} (id=${RELEASE_ID}, draft=$([ "$attempt" -eq 4 ] && echo true || echo false))"
-              break
+              CANDIDATE_ID=$(python3 -c 'import json; v = json.load(open("/tmp/release_resp.json")).get("id"); print(v if isinstance(v, int) else "")' 2>/dev/null || true)
+              if [[ "$CANDIDATE_ID" =~ ^[0-9]+$ ]]; then
+                RELEASE_ID="$CANDIDATE_ID"
+                echo "Created release ${TAG} (id=${RELEASE_ID}, draft=$([ "$attempt" -eq 4 ] && echo true || echo false))"
+                break
+              fi
             fi
 
             echo "Release creation attempt ${attempt} returned HTTP ${HTTP_CODE}:"
@@ -335,14 +371,14 @@ jobs:
             echo ""
 
             RELEASE_ID="$(find_release_id)"
-            if [ -n "$RELEASE_ID" ]; then
+            if [[ "$RELEASE_ID" =~ ^[0-9]+$ ]]; then
               break
             fi
 
             sleep $((attempt * 4))
           done
 
-          if [ -z "$RELEASE_ID" ]; then
+          if ! [[ "$RELEASE_ID" =~ ^[0-9]+$ ]]; then
             echo "Failed to create or locate GitHub Release ${TAG} after retries."
             rm -f "$NOTES_FILE"
             exit 1
@@ -350,30 +386,38 @@ jobs:
 
           # Remove any stale asset with the same name by asset ID before uploading
           EXISTING_ASSETS_JSON="$(mktemp)"
-          curl -sS \
+          ASSETS_CODE=$(curl -sS -o "$EXISTING_ASSETS_JSON" -w '%{http_code}' \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets?per_page=50" > "$EXISTING_ASSETS_JSON" || echo "[]" > "$EXISTING_ASSETS_JSON"
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets?per_page=50" || echo "000")
+          if [ "$ASSETS_CODE" != "200" ]; then
+            echo "[]" > "$EXISTING_ASSETS_JSON"
+          fi
 
           for ASSET_PATH in "$ARMV7_FILE" "$ARMV8_FILE" "$UNIVERSAL_FILE"; do
             ASSET_NAME="$(basename "$ASSET_PATH")"
-            EXISTING_ASSET_ID=$(python3 -c 'import json, sys; data = json.load(open(sys.argv[1])); print(next((a.get("id", "") for a in data if isinstance(data, list) and a.get("name") == sys.argv[2]), ""))' "$EXISTING_ASSETS_JSON" "$ASSET_NAME" 2>/dev/null || true)
-            if [ -n "$EXISTING_ASSET_ID" ]; then
+            EXISTING_ASSET_ID=$(python3 -c 'import json, sys; data = json.load(open(sys.argv[1])); print(next((a.get("id", "") for a in data if isinstance(data, list) and isinstance(a, dict) and a.get("name") == sys.argv[2] and isinstance(a.get("id"), int)), ""))' "$EXISTING_ASSETS_JSON" "$ASSET_NAME" 2>/dev/null || true)
+            if [[ "$EXISTING_ASSET_ID" =~ ^[0-9]+$ ]]; then
               curl -sS -X DELETE \
                 -H "Authorization: Bearer ${GH_TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
                 "https://api.github.com/repos/${REPO}/releases/assets/${EXISTING_ASSET_ID}" >/dev/null || true
             fi
 
             UPLOAD_OK=false
             for attempt in 1 2 3 4; do
-              UPLOAD_CODE=$(curl -sS -o /tmp/upload_resp.json -w '%{http_code}' \
+              UPLOAD_CODE=$(curl -sS --globoff -o /tmp/upload_resp.json -w '%{http_code}' \
                 -X POST "https://uploads.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets?name=${ASSET_NAME}" \
                 -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
                 -H "Content-Type: application/vnd.android.package-archive" \
                 --data-binary @"${ASSET_PATH}")
               if [ "$UPLOAD_CODE" = "201" ] || [ "$UPLOAD_CODE" = "200" ]; then
                 UPLOAD_OK=true
+                echo "Uploaded ${ASSET_NAME} (HTTP ${UPLOAD_CODE})"
                 break
               fi
               echo "Upload ${ASSET_NAME} attempt ${attempt} returned HTTP ${UPLOAD_CODE}:"
@@ -397,6 +441,7 @@ jobs:
           curl -sS -X PATCH "https://api.github.com/repos/${REPO}/releases/${RELEASE_ID}" \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
             -d @"$PATCH_FILE" >/dev/null || true
           rm -f "$PATCH_FILE" "$NOTES_FILE"
 
